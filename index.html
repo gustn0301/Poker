@@ -1094,6 +1094,54 @@
       50% { opacity: 1; transform: scale(1.2); }
     }
 
+    /* Card reveal selection */
+    .reveal-panel {
+      background: linear-gradient(135deg, rgba(10,10,15,0.97) 0%, rgba(18,18,28,0.95) 100%);
+      border: 2px solid var(--gold);
+      border-radius: 12px;
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 0 30px rgba(201,162,39,0.2), 0 -10px 40px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    .reveal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: var(--gold);
+      margin-bottom: 14px;
+    }
+
+    .reveal-cards-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .playing-card.selectable {
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .playing-card.selectable:hover {
+      transform: translateY(-10px) scale(1.05);
+      box-shadow: 0 12px 30px rgba(201,162,39,0.5);
+    }
+
+    .playing-card.selected {
+      transform: translateY(-10px) scale(1.05);
+      box-shadow: 0 0 0 3px var(--gold), 0 12px 30px rgba(201,162,39,0.5);
+    }
+
+    .reveal-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
     /* Chip decoration */
     .chip-icon {
       display: inline-block;
@@ -1213,10 +1261,10 @@
       <div class="rules-list">
         <div class="rule-item"><div class="rule-num">1</div><div>1인당 시작 금액은 <strong style="color:var(--gold)">100,000,000원 (1억원)</strong> 입니다.</div></div>
         <div class="rule-item"><div class="rule-num">2</div><div>게임 시작 시 기본 참가비 <strong style="color:var(--gold)">50,000원</strong>이 자동으로 차감됩니다.</div></div>
-        <div class="rule-item"><div class="rule-num">3</div><div>처음에는 카드 4장 (2장 비공개, 2장 공개)을 받고 시작합니다.</div></div>
-        <div class="rule-item"><div class="rule-num">4</div><div>이후 카드를 1장씩 받을 때마다 총 <strong style="color:var(--gold)">4번의 베팅 라운드</strong>가 진행됩니다.</div></div>
-        <div class="rule-item"><div class="rule-num">5</div><div>베팅은 최소 <strong style="color:var(--gold)">10만원</strong>부터 <strong style="color:var(--gold)">5만원 단위</strong>로 가능합니다.</div></div>
-        <div class="rule-item"><div class="rule-num">6</div><div>마지막 7번째 카드는 비공개로 지급되며, 쇼다운으로 승자를 가립니다.</div></div>
+        <div class="rule-item"><div class="rule-num">3</div><div>처음에 카드 3장을 모두 비공개로 받습니다. 이후 <strong style="color:var(--gold)">공개할 카드 1장을 직접 선택</strong>해 상대방에게 공개합니다.</div></div>
+        <div class="rule-item"><div class="rule-num">4</div><div>이후 카드를 1장씩 공개로 받으며 총 <strong style="color:var(--gold)">4번의 베팅 라운드</strong>가 진행됩니다.</div></div>
+        <div class="rule-item"><div class="rule-num">5</div><div>베팅은 최소 <strong style="color:var(--gold)">10만원</strong>부터 <strong style="color:var(--gold)">5만원 단위</strong>로 가능합니다. 상대방 보유금액을 초과한 레이즈는 불가합니다.</div></div>
+        <div class="rule-item"><div class="rule-num">6</div><div>마지막 <strong style="color:var(--gold)">7번째 카드는 비공개</strong>로 지급되며, 쇼다운으로 승자를 가립니다.</div></div>
         <div class="rule-item"><div class="rule-num">7</div><div>게임 도중 <strong style="color:#e07070">항복</strong> 버튼을 누르면 상대방이 즉시 승리합니다.</div></div>
       </div>
       <button class="btn-close-modal" onclick="closeModal('how-to-play-modal')">닫기</button>
@@ -1448,7 +1496,7 @@
       document.getElementById('room-code-display').innerText = roomCode;
 
       const btnSurrender = document.getElementById('btn-surrender');
-      if (game.phase > 0 && game.phase < 5) btnSurrender.classList.remove('hidden');
+      if (game.phase >= 1 && game.phase < 5) btnSurrender.classList.remove('hidden');
       else btnSurrender.classList.add('hidden');
 
       // Phase dots HTML
@@ -1463,36 +1511,64 @@
       let oppCardsHTML = '';
       if (game.phase === 0) {
         oppCardsHTML = `<div style="height:90px;display:flex;align-items:center;color:rgba(255,255,255,0.15);font-size:12px;letter-spacing:3px">대기중</div>`;
+      } else if (game.phase === 0.5) {
+        // 공개 선택 페이즈: 상대 카드는 모두 뒷면으로만 보임
+        const oppRevDone = isHost ? game.guestRevealed : game.hostRevealed;
+        oppCardsHTML = oppCards.map(() => createCardHTML(null, true)).join('');
+        if (oppRevDone) oppCardsHTML += `<div style="color:var(--gold);font-size:11px;margin-top:8px;letter-spacing:1px">✓ 선택 완료</div>`;
       } else {
         oppCardsHTML = oppCards.map(c => createCardHTML(c, c.isSecret && game.phase !== 5)).join('');
       }
 
+      const oppRevealedDone = isHost ? game.guestRevealed : game.hostRevealed;
       document.getElementById('opp-area').innerHTML = `
-        <div class="player-info-box ${!isMyTurn && game.phase > 0 && game.phase < 5 ? 'is-turn' : ''}">
+        <div class="player-info-box ${!isMyTurn && game.phase >= 1 && game.phase < 5 ? 'is-turn' : ''}">
           <div class="player-label">${isHost ? 'GUEST' : 'HOST'} · 상대방</div>
-          <div class="player-name">${!isMyTurn && game.phase > 0 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '참여자' : '방장'}</div>
+          <div class="player-name">${!isMyTurn && game.phase >= 1 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '참여자' : '방장'}</div>
           <div class="player-money">${oppMoney.toLocaleString()}<span style="font-size:12px;color:var(--text-muted);margin-left:4px">원</span></div>
-          ${game.phase > 0 ? `<div class="player-bet-badge">이번 베팅 ${oppBet.toLocaleString()}원</div>` : ''}
+          ${game.phase >= 1 ? `<div class="player-bet-badge">이번 베팅 ${oppBet.toLocaleString()}원</div>` : ''}
         </div>
         <div class="cards-row" style="margin-top:12px">${oppCardsHTML}</div>
       `;
 
       // ---- My area ----
       let myCardsHTML = '';
+      const myRevealedDone = isHost ? game.hostRevealed : game.guestRevealed;
       if (game.phase === 0) {
         myCardsHTML = `<div style="height:90px;display:flex;align-items:center;color:rgba(255,255,255,0.15);font-size:12px;letter-spacing:3px">대기중</div>`;
+      } else if (game.phase === 0.5 && !myRevealedDone) {
+        // 공개 선택 가능한 카드들 (클릭 가능)
+        myCardsHTML = myCards.map((c, i) => {
+          const isRed = c.suit === '♥' || c.suit === '♦';
+          const colorClass = isRed ? 'red' : 'black';
+          return `<div class="playing-card ${colorClass} selectable reveal-card-btn" data-idx="${i}">
+            <div class="card-corner">${c.rank}<br/>${c.suit}</div>
+            <div class="card-suit-center">${c.suit}</div>
+            <div class="card-corner bottom">${c.rank}<br/>${c.suit}</div>
+          </div>`;
+        }).join('');
       } else {
         myCardsHTML = myCards.map(c => createCardHTML(c, false)).join('');
       }
 
       document.getElementById('my-area').innerHTML = `
         <div class="cards-row" style="margin-bottom:12px">${myCardsHTML}</div>
-        <div class="player-info-box ${isMyTurn && game.phase > 0 && game.phase < 5 ? 'is-turn' : ''}">
+        <div class="player-info-box ${isMyTurn && game.phase >= 1 && game.phase < 5 ? 'is-turn' : ''}">
           <div class="player-label">${isHost ? 'HOST' : 'GUEST'} · 나</div>
-          <div class="player-name">${isMyTurn && game.phase > 0 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '방장' : '참여자'}</div>
+          <div class="player-name">${isMyTurn && game.phase >= 1 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '방장' : '참여자'}</div>
           <div class="player-money">${myMoney.toLocaleString()}<span style="font-size:12px;color:var(--text-muted);margin-left:4px">원</span></div>
-          ${game.phase > 0 ? `<div class="player-bet-badge">이번 베팅 ${myBet.toLocaleString()}원</div>` : ''}
+          ${game.phase >= 1 ? `<div class="player-bet-badge">이번 베팅 ${myBet.toLocaleString()}원</div>` : ''}
         </div>
+        ${game.phase === 0.5 && !myRevealedDone ? `
+          <div class="reveal-panel" style="margin-top:12px">
+            <div class="reveal-title">공개할 카드 1장 선택</div>
+            <div class="reveal-hint">위 카드 중 하나를 클릭하면 상대방에게 공개됩니다</div>
+          </div>
+        ` : game.phase === 0.5 && myRevealedDone ? `
+          <div style="margin-top:10px;padding:8px 20px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:8px;font-size:12px;color:var(--gold);letter-spacing:2px">
+            ✓ 선택 완료 — 상대방 대기 중
+          </div>
+        ` : ''}
       `;
 
       // ---- Center area ----
@@ -1519,7 +1595,27 @@
             ` : (roomData.guestId ? `<p style="color:var(--text-muted);font-size:13px;letter-spacing:2px">방장이 게임을 시작하기를 기다리는 중...</p>` : '')}
           </div>
         `;
+      } else if (game.phase === 0.5) {
+        const hostDone = game.hostRevealed;
+        const guestDone = game.guestRevealed;
+        centerHTML = `
+          <div class="pot-display">
+            <div class="pot-label">TOTAL POT</div>
+            <div class="pot-amount"><span class="chip-icon"></span>${game.pot.toLocaleString()} 원</div>
+          </div>
+          <div class="game-message">공개할 카드를 한 장 선택하세요</div>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted)">
+            <span style="color:${hostDone ? 'var(--gold)' : 'var(--text-muted)'}">
+              ${hostDone ? '✓' : '○'} 방장
+            </span>
+            <span style="color:${guestDone ? 'var(--gold)' : 'var(--text-muted)'}">
+              ${guestDone ? '✓' : '○'} 참여자
+            </span>
+          </div>
+        `;
       } else {
+        // 베팅 가능 최대 금액 계산 (두 플레이어 중 작은 값)
+        const maxBetAllowed = Math.min(myMoney, oppMoney);
         centerHTML = `
           <div class="phase-dots">${phaseDots}</div>
           <div class="pot-display">
@@ -1530,15 +1626,18 @@
           ${game.phase === 5 && isHost ? `
             <button id="btn-start-game" class="next-game-btn">다음 게임 시작 (참가비 5만)</button>
           ` : ''}
-          ${game.phase > 0 && game.phase < 5 && isMyTurn ? `
+          ${game.phase >= 1 && game.phase < 5 && isMyTurn ? `
             <div class="betting-panel">
               <div class="betting-top-info">
                 <span>콜 비용: <strong style="color:#90b0ff">${(game.currentBet - myBet).toLocaleString()}원</strong></span>
                 <span class="your-turn-badge">YOUR TURN</span>
               </div>
               <div class="raise-row">
-                <input id="bet-input-val" type="number" min="100000" step="50000" value="${currentBetInput}" class="bet-input" />
+                <input id="bet-input-val" type="number" min="100000" step="50000" max="${maxBetAllowed}" value="${currentBetInput}" class="bet-input" />
                 <button id="btn-raise" class="btn-raise">레이즈</button>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:right;margin-bottom:8px;letter-spacing:1px">
+                최대 베팅: ${maxBetAllowed.toLocaleString()}원
               </div>
               <div class="action-btns">
                 <button id="btn-call" class="btn-call">
@@ -1547,7 +1646,7 @@
                 <button id="btn-fold" class="btn-fold">다이 (Fold)</button>
               </div>
             </div>
-          ` : game.phase > 0 && game.phase < 5 && !isMyTurn ? `
+          ` : game.phase >= 1 && game.phase < 5 && !isMyTurn ? `
             <div class="waiting-notice">
               <div class="waiting-spinner" style="justify-content:center">
                 <div class="spinner-dot"></div>
@@ -1639,13 +1738,42 @@
         const hMoney = game.hostMoney - ante;
         const gMoney = game.guestMoney - ante;
         const pot = ante * 2;
-        const hostHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:false}, {...deck.pop(), isSecret:false} ];
-        const guestHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:false}, {...deck.pop(), isSecret:false} ];
+        // 각자 3장 모두 시크릿으로 지급 — 각자 1장을 직접 선택해서 공개
+        const hostHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true} ];
+        const guestHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true} ];
         await updateGameData({
           status: 'playing', 'game.hostMoney': hMoney, 'game.guestMoney': gMoney, 'game.pot': pot, 'game.deck': deck,
-          'game.hostCards': hostHand, 'game.guestCards': guestHand, 'game.phase': 1, 'game.turn': roomData.hostId,
-          'game.currentBet': 0, 'game.hostBetAmount': 0, 'game.guestBetAmount': 0, 'game.winner': null, 'game.message': '라운드 1 베팅 시작!'
+          'game.hostCards': hostHand, 'game.guestCards': guestHand,
+          'game.phase': 0.5,           // 0.5 = 카드 공개 선택 페이즈
+          'game.hostRevealed': false,   // 방장이 공개 선택 완료했는지
+          'game.guestRevealed': false,  // 참여자가 공개 선택 완료했는지
+          'game.turn': roomData.hostId,
+          'game.currentBet': 0, 'game.hostBetAmount': 0, 'game.guestBetAmount': 0, 'game.winner': null,
+          'game.message': '공개할 카드를 한 장 선택하세요!'
         });
+      } else if (target.closest('.reveal-card-btn')) {
+        // 카드 공개 선택 처리
+        const idx = Number(target.closest('.reveal-card-btn').dataset.idx);
+        const myCards = isHost ? [...game.hostCards] : [...game.guestCards];
+        // 선택한 카드만 공개, 나머지 유지
+        myCards[idx] = { ...myCards[idx], isSecret: false };
+        const myRevealedKey = isHost ? 'game.hostRevealed' : 'game.guestRevealed';
+        const myCardsKey = isHost ? 'game.hostCards' : 'game.guestCards';
+        const bothRevealed = isHost ? game.guestRevealed : game.hostRevealed;
+        const updates = {
+          [myCardsKey]: myCards,
+          [myRevealedKey]: true,
+        };
+        if (bothRevealed) {
+          // 둘 다 선택 완료 → 베팅 페이즈 1 시작
+          updates['game.phase'] = 1;
+          updates['game.turn'] = roomData.hostId;
+          updates['game.message'] = '라운드 1 베팅 시작!';
+        } else {
+          updates['game.message'] = '상대방이 공개할 카드를 선택하는 중...';
+        }
+        await updateGameData(updates);
+
       } else if (target.closest('#btn-disband-room')) {
         window.leaveRoom();
       } else if (target.closest('#btn-call') || target.closest('#btn-fold') || target.closest('#btn-raise')) {
@@ -1665,22 +1793,30 @@
           if (isHost) newGuestMoney += newPot; else newHostMoney += newPot;
           newPhase = 5;
         } else if (action === 'call') {
-          const pay = Math.min(callAmount, isHost ? newHostMoney : newGuestMoney);
-          if (isHost) { newHostMoney -= pay; newHostBet += pay; } else { newGuestMoney -= pay; newGuestBet += pay; }
-          newPot += pay;
+          const callPay = Math.min(callAmount, isHost ? newHostMoney : newGuestMoney);
+          if (isHost) { newHostMoney -= callPay; newHostBet += callPay; } else { newGuestMoney -= callPay; newGuestBet += callPay; }
+          newPot += callPay;
           msg = `${isHost ? '방장' : '참여자'}님이 콜했습니다.`;
         } else if (action === 'raise') {
           if (amount < 100000 || amount % 50000 !== 0) return alert("10만원 이상, 5만원 단위로 베팅해야 합니다.");
-          const pay = callAmount + amount;
-          if (isHost) { newHostMoney -= pay; newHostBet += pay; } else { newGuestMoney -= pay; newGuestBet += pay; }
-          newPot += pay;
-          msg = `${isHost ? '방장' : '참여자'}님이 ${amount.toLocaleString()}원을 레이즈했습니다.`;
+          // 레이즈: 상대의 currentBet까지 콜하고 추가로 amount만큼 더 베팅
+          // 단, 자신이 가진 돈을 초과할 수 없음
+          const myCurrentMoney = isHost ? newHostMoney : newGuestMoney;
+          const oppCurrentMoney = isHost ? newGuestMoney : newHostMoney;
+          const maxRaise = Math.min(amount, myCurrentMoney - callAmount, oppCurrentMoney);
+          if (maxRaise <= 0) return alert("베팅 가능한 금액이 없습니다.");
+          const actualRaise = Math.min(amount, maxRaise);
+          const raisePay = callAmount + actualRaise;
+          if (isHost) { newHostMoney -= raisePay; newHostBet += raisePay; } else { newGuestMoney -= raisePay; newGuestBet += raisePay; }
+          newPot += raisePay;
+          msg = `${isHost ? '방장' : '참여자'}님이 ${actualRaise.toLocaleString()}원을 레이즈했습니다.`;
         }
 
         const currentMaxBet = Math.max(newHostBet, newGuestBet);
         if (action !== 'fold' && newHostBet === newGuestBet) {
           if (newPhase < 4) {
             newPhase++;
+            // 새 카드는 공개
             newHostCards.push({...newDeck.pop(), isSecret: false});
             newGuestCards.push({...newDeck.pop(), isSecret: false});
             msg = `라운드 ${newPhase} 시작! 새로운 카드가 지급되었습니다.`;
@@ -1688,10 +1824,9 @@
             newTurn = roomData.hostId;
           } else if (newPhase === 4) {
             newPhase = 5;
-            if (newHostCards.length === 6) {
-              newHostCards.push({...newDeck.pop(), isSecret: true});
-              newGuestCards.push({...newDeck.pop(), isSecret: true});
-            }
+            // 7번째 카드는 시크릿으로 지급
+            newHostCards.push({...newDeck.pop(), isSecret: true});
+            newGuestCards.push({...newDeck.pop(), isSecret: true});
             const hHand = evaluateHand(newHostCards); const gHand = evaluateHand(newGuestCards);
             if (hHand.score > gHand.score) { winner = roomData.hostId; newHostMoney += newPot; msg = `방장 승리! (${hHand.name})`; }
             else if (gHand.score > hHand.score) { winner = roomData.guestId; newGuestMoney += newPot; msg = `참여자 승리! (${gHand.name})`; }
