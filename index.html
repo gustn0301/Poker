@@ -1737,8 +1737,25 @@
         const ante = 50000;
         const hMoney = game.hostMoney - ante;
         const gMoney = game.guestMoney - ante;
+
+        // 참가비 차감 후 파산 체크
+        if (hMoney <= 0) {
+          await updateGameData({
+            'game.hostMoney': 0, 'game.guestMoney': game.guestMoney,
+            'game.phase': 5, 'game.winner': roomData.guestId,
+            'game.message': '방장의 보유 자산이 0원이 되었습니다. 참여자 최종 승리!'
+          });
+          return;
+        }
+        if (gMoney <= 0) {
+          await updateGameData({
+            'game.hostMoney': game.hostMoney, 'game.guestMoney': 0,
+            'game.phase': 5, 'game.winner': roomData.hostId,
+            'game.message': '참여자의 보유 자산이 0원이 되었습니다. 방장 최종 승리!'
+          });
+          return;
+        }
         const pot = ante * 2;
-        // 각자 3장 모두 시크릿으로 지급 — 각자 1장을 직접 선택해서 공개
         const hostHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true} ];
         const guestHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true} ];
         await updateGameData({
@@ -1833,6 +1850,23 @@
             else { newHostMoney += newPot / 2; newGuestMoney += newPot / 2; msg = `무승부! (${hHand.name})`; winner = 'draw'; }
           }
         }
+        // 파산 체크: 돈이 0원 이하이면 상대방 최종 승리
+        if (winner === null && newPhase !== 5) {
+          if (newHostMoney <= 0) {
+            winner = roomData.guestId;
+            newGuestMoney += newPot;
+            newPot = 0;
+            newPhase = 5;
+            msg = `방장의 보유 자산이 0원이 되었습니다. 참여자 최종 승리!`;
+          } else if (newGuestMoney <= 0) {
+            winner = roomData.hostId;
+            newHostMoney += newPot;
+            newPot = 0;
+            newPhase = 5;
+            msg = `참여자의 보유 자산이 0원이 되었습니다. 방장 최종 승리!`;
+          }
+        }
+
         const updates = {
           'game.hostMoney': newHostMoney, 'game.guestMoney': newGuestMoney, 'game.pot': newPot, 'game.currentBet': currentMaxBet,
           'game.hostBetAmount': newHostBet, 'game.guestBetAmount': newGuestBet, 'game.turn': newTurn, 'game.phase': newPhase,
