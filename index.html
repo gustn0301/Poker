@@ -1,129 +1,205 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세븐 포커 온라인</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom Scrollbar for Chat */
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; }
+  </style>
+</head>
+<body class="bg-slate-900 text-white select-none overflow-hidden font-sans">
 
-// ==========================================
-// 1. Firebase 초기화 및 설정
-// ==========================================
-// 사용자 제공 Firebase 설정
-const userFirebaseConfig = {
-  apiKey: "AIzaSyAOEr3obGdMpSG0RQzUhWUGou7tn_idcxo",
-  authDomain: "fruitslayer-online.firebaseapp.com",
-  projectId: "fruitslayer-online",
-  storageBucket: "fruitslayer-online.firebasestorage.app",
-  messagingSenderId: "396029026245",
-  appId: "1:396029026245:web:ccf6941da124c69a7bf5ac"
-};
-
-// 캔버스 환경과 호환성을 위한 설정 병합
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'poker-app';
-
-// ==========================================
-// 2. 포커 게임 유틸리티 (덱, 족보 계산 등)
-// ==========================================
-const SUITS = ['♠', '♥', '♦', '♣'];
-const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
-
-const getDeck = () => {
-  let deck = [];
-  SUITS.forEach(suit => {
-    RANKS.forEach(rank => {
-      deck.push({ suit, rank, value: RANK_VALUES[rank] });
-    });
-  });
-  // Shuffle
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
-};
-
-// 7장 카드 족보 판별 (그리디 방식)
-const evaluateHand = (cards) => {
-  if (!cards || cards.length === 0) return { score: 0, name: '탑 (High Card)' };
+  <!-- ==========================================
+       SCREENS
+  ========================================== -->
   
-  const sortedCards = [...cards].sort((a, b) => b.value - a.value);
-  const suitCounts = { '♠': [], '♥': [], '♦': [], '♣': [] };
-  const rankCounts = {};
+  <!-- 1. 메인 화면 -->
+  <div id="main-screen" class="min-h-screen flex flex-col items-center justify-center p-4 transition-opacity">
+    <div class="text-center mb-12">
+      <h1 class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 drop-shadow-lg mb-4">
+        세븐 포커 온라인
+      </h1>
+      <p class="text-gray-400 text-lg">최고의 전략과 운을 시험해보세요!</p>
+    </div>
+    <div class="flex flex-col gap-4 w-full max-w-sm">
+      <button onclick="showScreen('lobby-screen')" class="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
+        게임 시작하기
+      </button>
+      <button onclick="openModal('how-to-play-modal')" class="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
+        게임 방법
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. 로비 화면 -->
+  <div id="lobby-screen" class="min-h-screen hidden flex flex-col items-center p-4 relative">
+    <button onclick="showScreen('main-screen')" class="absolute top-4 left-4 text-white hover:text-green-400 p-2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <h2 class="text-4xl font-bold text-white mt-12 mb-8">게임 로비</h2>
+    <div class="bg-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-6">
+      <button id="btn-create-room" class="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition-all">
+        방 생성하기 (방장)
+      </button>
+      <div class="flex items-center">
+        <div class="flex-1 border-t border-slate-600"></div>
+        <span class="px-4 text-slate-400">또는</span>
+        <div class="flex-1 border-t border-slate-600"></div>
+      </div>
+      <div class="flex flex-col gap-3">
+        <input type="text" id="join-code-input" placeholder="참여 코드 6자리 입력" maxlength="6" class="w-full p-4 bg-slate-700 text-white rounded-xl text-center text-xl focus:outline-none focus:ring-2 focus:ring-green-400" />
+        <button id="btn-join-room" class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl transition-all">
+          참여하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 게임 화면 -->
+  <div id="game-screen" class="hidden h-screen bg-green-900 flex text-white relative font-sans overflow-hidden w-full">
+    <!-- 왼쪽 탑 버튼 -->
+    <div class="absolute top-4 left-4 z-10 flex gap-4">
+      <button onclick="leaveRoom()" class="p-2 bg-slate-800 bg-opacity-50 rounded-full hover:bg-opacity-80 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <div id="room-code-display" class="bg-black bg-opacity-50 px-4 py-2 rounded-lg font-mono tracking-widest border border-green-700">방 코드: ----</div>
+    </div>
+    <!-- 오른쪽 탑 버튼 -->
+    <div class="absolute top-4 right-4 z-10 flex gap-3">
+      <button onclick="openModal('rankings-modal')" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold shadow-md">족보 보기</button>
+      <button id="btn-surrender" onclick="openModal('surrender-modal')" class="hidden px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold shadow-md">항복</button>
+    </div>
+
+    <!-- 메인 게임 보드 -->
+    <div class="flex-1 flex flex-col items-center justify-between py-12 relative border-r border-green-800">
+      <div class="absolute inset-4 border-2 border-green-800 rounded-full opacity-20 pointer-events-none"></div>
+      
+      <!-- 상대방 영역 -->
+      <div id="opp-area" class="flex flex-col items-center z-10"></div>
+      
+      <!-- 중앙 베팅 영역 -->
+      <div id="center-area" class="flex flex-col items-center justify-center w-full max-w-lg z-10"></div>
+      
+      <!-- 내 영역 -->
+      <div id="my-area" class="flex flex-col items-center z-10"></div>
+    </div>
+
+    <!-- 오른쪽 채팅 패널 -->
+    <div class="w-80 bg-slate-900 border-l border-slate-700 flex flex-col z-20">
+      <div class="p-4 bg-slate-800 border-b border-slate-700 font-bold text-center">실시간 채팅</div>
+      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 scrollbar-thin"></div>
+      <form id="chat-form" class="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
+        <input id="chat-input" type="text" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500" placeholder="메시지 입력..." />
+        <button type="submit" class="bg-green-600 px-3 rounded-lg hover:bg-green-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       MODALS
+  ========================================== -->
   
-  sortedCards.forEach(card => {
-    suitCounts[card.suit].push(card);
-    rankCounts[card.value] = (rankCounts[card.value] || 0) + 1;
-  });
+  <!-- 게임 방법 모달 -->
+  <div id="how-to-play-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 text-white p-6 rounded-2xl max-w-lg w-full">
+      <h2 class="text-2xl font-bold mb-4 text-green-400">게임 방법</h2>
+      <ul class="list-disc pl-5 space-y-2 text-gray-300">
+        <li>1인당 시작 금액은 <strong>100,000,000원(1억원)</strong> 입니다.</li>
+        <li>게임 시작 시 기본 참가비 <strong>50,000원</strong>이 자동으로 차감됩니다.</li>
+        <li>처음에는 카드 4장(2장 비공개, 2장 공개)을 받고 시작합니다.</li>
+        <li>이후 카드를 1장씩 받을 때마다 1번씩, <strong>총 4번의 베팅 라운드</strong>가 진행됩니다.</li>
+        <li>베팅은 최소 <strong>10만원</strong>부터 <strong>5만원 단위</strong>로 가능합니다.</li>
+        <li>마지막 7번째 카드는 비공개로 지급되며 모든 라운드 종료 시 패를 공개(쇼다운)하여 승자를 가립니다.</li>
+        <li>게임 도중 '항복' 버튼을 누르면 상대방이 즉시 승리합니다.</li>
+      </ul>
+      <button onclick="closeModal('how-to-play-modal')" class="mt-6 w-full py-3 bg-red-500 hover:bg-red-600 rounded-xl font-bold">닫기</button>
+    </div>
+  </div>
 
-  let isFlush = false, flushCards = [];
-  for (let suit in suitCounts) {
-    if (suitCounts[suit].length >= 5) {
-      isFlush = true;
-      flushCards = suitCounts[suit];
-      break;
-    }
-  }
+  <!-- 족보 모달 -->
+  <div id="rankings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-slate-600">
+      <h2 class="text-xl font-bold mb-4 text-yellow-500 text-center border-b border-slate-600 pb-2">세븐 포커 족보</h2>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-red-400">로얄 스트레이트 플러쉬</span><span>가장 강함</span></div>
+        <div class="flex justify-between"><span>스트레이트 플러쉬</span><span></span></div>
+        <div class="flex justify-between"><span>포카드</span><span>같은 숫자 4장</span></div>
+        <div class="flex justify-between"><span>풀하우스</span><span>트리플 + 원페어</span></div>
+        <div class="flex justify-between"><span>플러쉬</span><span>같은 무늬 5장</span></div>
+        <div class="flex justify-between"><span>스트레이트</span><span>연속된 숫자 5장</span></div>
+        <div class="flex justify-between"><span>트리플</span><span>같은 숫자 3장</span></div>
+        <div class="flex justify-between"><span>투페어</span><span>같은 숫자 2장씩 2쌍</span></div>
+        <div class="flex justify-between"><span>원페어</span><span>같은 숫자 2장</span></div>
+        <div class="flex justify-between text-gray-400 border-t border-slate-700 pt-2"><span>탑 (High Card)</span><span>가장 약함</span></div>
+      </div>
+      <button onclick="closeModal('rankings-modal')" class="mt-6 w-full py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">닫기</button>
+    </div>
+  </div>
 
-  const checkStraight = (cardList) => {
-    const vals = [...new Set(cardList.map(c => c.value))].sort((a, b) => b - a);
-    if (vals.includes(14)) vals.push(1); // Ace can be 1
-    let streak = 1, maxVal = vals[0];
-    for (let i = 0; i < vals.length - 1; i++) {
-      if (vals[i] - 1 === vals[i+1]) {
-        streak++;
-        if (streak === 5) return { isStraight: true, top: maxVal };
-      } else {
-        streak = 1;
-        maxVal = vals[i+1];
-      }
-    }
-    return { isStraight: false, top: 0 };
-  };
+  <!-- 항복 확인 모달 -->
+  <div id="surrender-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-red-900 text-center">
+      <h2 class="text-2xl font-bold mb-2 text-red-500">항복 확인</h2>
+      <p class="text-gray-300 mb-6">항복에 동의하십니까?<br/>확인 시 즉시 패배 처리되며 팟에 쌓인 돈은 상대방이 가져갑니다.</p>
+      <div class="flex gap-4">
+        <button id="btn-confirm-surrender" class="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-lg font-bold">확인</button>
+        <button onclick="closeModal('surrender-modal')" class="flex-1 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">취소</button>
+      </div>
+    </div>
+  </div>
 
-  // Straight Flush
-  if (isFlush) {
-    const stFlush = checkStraight(flushCards);
-    if (stFlush.isStraight) {
-      return stFlush.top === 14 ? { score: 900, name: '로얄 스트레이트 플러쉬' } : { score: 800 + stFlush.top, name: '스트레이트 플러쉬' };
-    }
-  }
 
-  // Four of a kind
-  let pairs = [], trips = [], quads = [];
-  for (let val in rankCounts) {
-    if (rankCounts[val] === 4) quads.push(Number(val));
-    if (rankCounts[val] === 3) trips.push(Number(val));
-    if (rankCounts[val] === 2) pairs.push(Number(val));
-  }
+  <!-- ==========================================
+       JAVASCRIPT LOGIC
+  ========================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  if (quads.length > 0) return { score: 700 + Math.max(...quads), name: '포카드 (Four of a Kind)' };
-  if (trips.length > 0 && (pairs.length > 0 || trips.length > 1)) return { score: 600 + Math.max(...trips), name: '풀하우스 (Full House)' };
-  if (isFlush) return { score: 500 + flushCards[0].value, name: '플러쉬 (Flush)' };
-  
-  const st = checkStraight(sortedCards);
-  if (st.isStraight) return { score: 400 + st.top, name: '스트레이트 (Straight)' };
-  if (trips.length > 0) return { score: 300 + Math.max(...trips), name: '트리플 (Three of a Kind)' };
-  if (pairs.length >= 2) return { score: 200 + Math.max(...pairs), name: '투페어 (Two Pair)' };
-  if (pairs.length === 1) return { score: 100 + pairs[0], name: '원페어 (One Pair)' };
-  
-  return { score: sortedCards[0].value, name: '탑 (High Card)' };
-};
+    // 1. Firebase 초기화
+    const userFirebaseConfig = {
+      apiKey: "AIzaSyAOEr3obGdMpSG0RQzUhWUGou7tn_idcxo",
+      authDomain: "fruitslayer-online.firebaseapp.com",
+      projectId: "fruitslayer-online",
+      storageBucket: "fruitslayer-online.firebasestorage.app",
+      messagingSenderId: "396029026245",
+      appId: "1:396029026245:web:ccf6941da124c69a7bf5ac"
+    };
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'poker-app';
 
-// ==========================================
-// 3. 메인 App 컴포넌트
-// ==========================================
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [currentScreen, setCurrentScreen] = useState('main'); // 'main', 'lobby', 'game'
-  const [roomCode, setRoomCode] = useState('');
-  const [roomData, setRoomData] = useState(null);
-  const [showHowToPlay, setShowHowToPlay] = useState(false);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  // 규칙: Auth 초기화 (조건 3 준수)
-  useEffect(() => {
+    // 2. 전역 상태 변수
+    let currentUser = null;
+    let roomCode = '';
+    let roomData = null;
+    let unsubscribeRoom = null;
+
+    // 3. UI 헬퍼 함수
+    window.showScreen = (screenId) => {
+      ['main-screen', 'lobby-screen', 'game-screen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(screenId).classList.remove('hidden');
+      if (screenId === 'lobby-screen') cleanupOldRooms();
+    };
+
+    window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+    window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+
+    // 4. Auth 초기화
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -131,660 +207,406 @@ export default function App() {
         } else {
           await signInAnonymously(auth);
         }
-      } catch (e) {
-        console.error("Auth Error:", e);
-      }
+      } catch (e) { console.error("Auth Error:", e); }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
 
-  // 오래된 방 정리 (5시간)
-  const cleanupOldRooms = async () => {
-    if (!user) return;
-    try {
-      const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'pokerRooms');
-      const snapshot = await getDocs(roomsRef);
-      const now = Date.now();
-      snapshot.forEach(async (docSnap) => {
-        const data = docSnap.data();
-        if (data.lastActive && (now - data.lastActive > 5 * 60 * 60 * 1000)) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', docSnap.id));
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+    });
+
+    // 5. 룸 클린업 로직
+    async function cleanupOldRooms() {
+      if (!currentUser) return;
+      try {
+        const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'pokerRooms');
+        const snapshot = await getDocs(roomsRef);
+        const now = Date.now();
+        snapshot.forEach(async (docSnap) => {
+          const data = docSnap.data();
+          if (data.lastActive && (now - data.lastActive > 5 * 60 * 60 * 1000)) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', docSnap.id));
+          }
+        });
+      } catch (e) { console.error("Cleanup error:", e); }
+    }
+
+    // 6. 포커 유틸리티
+    const SUITS = ['♠', '♥', '♦', '♣'];
+    const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
+
+    const getDeck = () => {
+      let deck = [];
+      SUITS.forEach(suit => { RANKS.forEach(rank => { deck.push({ suit, rank, value: RANK_VALUES[rank] }); }); });
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
+    };
+
+    const evaluateHand = (cards) => {
+      if (!cards || cards.length === 0) return { score: 0, name: '탑 (High Card)' };
+      const sortedCards = [...cards].sort((a, b) => b.value - a.value);
+      const suitCounts = { '♠': [], '♥': [], '♦': [], '♣': [] };
+      const rankCounts = {};
+      sortedCards.forEach(card => {
+        suitCounts[card.suit].push(card);
+        rankCounts[card.value] = (rankCounts[card.value] || 0) + 1;
+      });
+
+      let isFlush = false, flushCards = [];
+      for (let suit in suitCounts) {
+        if (suitCounts[suit].length >= 5) {
+          isFlush = true; flushCards = suitCounts[suit]; break;
+        }
+      }
+
+      const checkStraight = (cardList) => {
+        const vals = [...new Set(cardList.map(c => c.value))].sort((a, b) => b - a);
+        if (vals.includes(14)) vals.push(1);
+        let streak = 1, maxVal = vals[0];
+        for (let i = 0; i < vals.length - 1; i++) {
+          if (vals[i] - 1 === vals[i+1]) {
+            streak++;
+            if (streak === 5) return { isStraight: true, top: maxVal };
+          } else { streak = 1; maxVal = vals[i+1]; }
+        }
+        return { isStraight: false, top: 0 };
+      };
+
+      if (isFlush) {
+        const stFlush = checkStraight(flushCards);
+        if (stFlush.isStraight) return stFlush.top === 14 ? { score: 900, name: '로얄 스트레이트 플러쉬' } : { score: 800 + stFlush.top, name: '스트레이트 플러쉬' };
+      }
+
+      let pairs = [], trips = [], quads = [];
+      for (let val in rankCounts) {
+        if (rankCounts[val] === 4) quads.push(Number(val));
+        if (rankCounts[val] === 3) trips.push(Number(val));
+        if (rankCounts[val] === 2) pairs.push(Number(val));
+      }
+
+      if (quads.length > 0) return { score: 700 + Math.max(...quads), name: '포카드 (Four of a Kind)' };
+      if (trips.length > 0 && (pairs.length > 0 || trips.length > 1)) return { score: 600 + Math.max(...trips), name: '풀하우스 (Full House)' };
+      if (isFlush) return { score: 500 + flushCards[0].value, name: '플러쉬 (Flush)' };
+      const st = checkStraight(sortedCards);
+      if (st.isStraight) return { score: 400 + st.top, name: '스트레이트 (Straight)' };
+      if (trips.length > 0) return { score: 300 + Math.max(...trips), name: '트리플 (Three of a Kind)' };
+      if (pairs.length >= 2) return { score: 200 + Math.max(...pairs), name: '투페어 (Two Pair)' };
+      if (pairs.length === 1) return { score: 100 + pairs[0], name: '원페어 (One Pair)' };
+      return { score: sortedCards[0].value, name: '탑 (High Card)' };
+    };
+
+    // 7. 게임 메인 로직 헬퍼
+    const updateGameData = async (updates) => {
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
+      await updateDoc(roomRef, { lastActive: Date.now(), ...updates });
+    };
+
+    window.leaveRoom = async () => {
+      if (!currentUser || !roomData) return;
+      const isHost = currentUser.uid === roomData.hostId;
+      if (isHost) {
+        await updateGameData({ status: 'disbanded' });
+      } else {
+        await updateGameData({ guestId: null });
+        roomCode = '';
+        if (unsubscribeRoom) unsubscribeRoom();
+        window.showScreen('lobby-screen');
+      }
+    };
+
+    // 8. 렌더링 함수
+    const createCardHTML = (card, hidden) => {
+      if (hidden) {
+        return `<div class="w-16 h-24 bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-white rounded-lg shadow-md m-1 flex items-center justify-center">
+          <div class="w-12 h-20 border border-blue-400 rounded-sm bg-blue-800 opacity-50 flex items-center justify-center">
+            <span class="text-white opacity-20 font-bold text-2xl">?</span>
+          </div>
+        </div>`;
+      }
+      const isRed = card.suit === '♥' || card.suit === '♦';
+      const colorClass = isRed ? 'text-red-600' : 'text-black';
+      return `<div class="w-16 h-24 bg-white border border-gray-300 rounded-lg shadow-md m-1 p-2 flex flex-col justify-between ${colorClass}">
+        <div class="text-sm font-bold leading-none">${card.rank}</div>
+        <div class="text-2xl text-center flex-1 flex items-center justify-center">${card.suit}</div>
+      </div>`;
+    };
+
+    const renderGameScreen = () => {
+      if (!roomData || !currentUser) return;
+
+      const isHost = currentUser.uid === roomData.hostId;
+      const opponentId = isHost ? roomData.guestId : roomData.hostId;
+      const game = roomData.game;
+
+      const myMoney = isHost ? game.hostMoney : game.guestMoney;
+      const oppMoney = isHost ? game.guestMoney : game.hostMoney;
+      const myCards = isHost ? game.hostCards : game.guestCards;
+      const oppCards = isHost ? game.guestCards : game.hostCards;
+      const myBet = isHost ? game.hostBetAmount : game.guestBetAmount;
+      const oppBet = isHost ? game.guestBetAmount : game.hostBetAmount;
+      const isMyTurn = game.turn === currentUser.uid;
+
+      document.getElementById('room-code-display').innerText = `방 코드: ${roomCode}`;
+
+      const btnSurrender = document.getElementById('btn-surrender');
+      if (game.phase > 0 && game.phase < 5) btnSurrender.classList.remove('hidden');
+      else btnSurrender.classList.add('hidden');
+
+      // 상대방 렌더링
+      let oppCardsHTML = game.phase === 0 ? `<div class="text-green-700 opacity-50 flex items-center h-full">대기중...</div>`
+        : oppCards.map(c => createCardHTML(c, c.isSecret && game.phase !== 5)).join('');
+      
+      document.getElementById('opp-area').innerHTML = `
+        <div class="bg-black bg-opacity-40 px-6 py-2 rounded-xl mb-4 text-center">
+          <h3 class="text-lg font-bold text-gray-300">${isHost ? '참여자' : '방장'} (상대방)</h3>
+          <p class="text-yellow-400 font-mono text-xl">${oppMoney.toLocaleString()} 원</p>
+          ${game.phase > 0 ? `<p class="text-sm text-gray-400">이번 턴 베팅: ${oppBet.toLocaleString()} 원</p>` : ''}
+        </div>
+        <div class="flex justify-center h-28">${oppCardsHTML}</div>
+      `;
+
+      // 내 영역 렌더링
+      let myCardsHTML = game.phase === 0 ? `<div class="text-green-700 opacity-50 flex items-center h-full">대기중...</div>`
+        : myCards.map(c => createCardHTML(c, false)).join('');
+
+      document.getElementById('my-area').innerHTML = `
+        <div class="flex justify-center h-28 mb-4">${myCardsHTML}</div>
+        <div class="bg-black bg-opacity-80 border-t-4 border-green-500 px-8 py-3 rounded-t-2xl text-center min-w-[250px] shadow-2xl">
+          <h3 class="text-lg font-bold text-white mb-1">${isHost ? '방장' : '참여자'} (나)</h3>
+          <p class="text-yellow-400 font-mono text-2xl font-bold">${myMoney.toLocaleString()} 원</p>
+          ${game.phase > 0 ? `<p class="text-sm text-gray-400 mt-1">이번 턴 베팅: ${myBet.toLocaleString()} 원</p>` : ''}
+        </div>
+      `;
+
+      // 중앙 영역 렌더링 (입력값 보존을 위한 트릭 사용)
+      let currentBetInput = document.getElementById('bet-input-val')?.value || '100000';
+      
+      let centerHTML = '';
+      if (game.phase === 0) {
+        centerHTML = `
+          <div class="flex flex-col items-center bg-black bg-opacity-60 p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
+            <h2 class="text-2xl mb-6 text-green-400">${roomData.guestId ? '모두 준비되었습니다' : '참여자를 기다리는 중...'}</h2>
+            ${isHost ? `
+              <div class="flex gap-4">
+                <button id="btn-start-game" class="px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-extrabold rounded-xl text-xl shadow-lg transition">게임 시작하기</button>
+                <button id="btn-disband-room" class="px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xl shadow-lg transition">방 해산하기</button>
+              </div>
+            ` : `<p class="text-gray-300">방장이 게임을 시작하기를 기다려주세요.</p>`}
+          </div>
+        `;
+      } else {
+        centerHTML = `
+          <div class="w-full flex flex-col items-center">
+            <div class="bg-black bg-opacity-70 px-8 py-6 rounded-3xl text-center border-2 border-yellow-600 shadow-2xl mb-6 transform scale-110">
+              <p class="text-sm text-yellow-500 mb-1 font-bold tracking-widest">TOTAL POT</p>
+              <p class="text-4xl font-mono text-yellow-400">${game.pot.toLocaleString()} <span class="text-xl">원</span></p>
+            </div>
+            <div class="bg-slate-800 bg-opacity-80 px-6 py-3 rounded-full text-center mb-6 max-w-sm w-full truncate border border-slate-600">
+              ${game.message}
+            </div>
+            ${game.phase === 5 && isHost ? `
+              <button id="btn-start-game" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl shadow-lg mt-4 animate-bounce">
+                다음 게임 시작 (참가비 5만)
+              </button>
+            ` : ''}
+            ${game.phase > 0 && game.phase < 5 && isMyTurn ? `
+              <div class="bg-slate-800 p-4 rounded-xl flex flex-col gap-3 shadow-2xl border border-slate-600 w-full max-w-md">
+                <div class="flex justify-between text-sm text-gray-300 px-2">
+                  <span>콜 비용: ${(game.currentBet - myBet).toLocaleString()}원</span>
+                  <span>내 턴입니다!</span>
+                </div>
+                <div class="flex gap-2">
+                  <input id="bet-input-val" type="number" min="100000" step="50000" value="${currentBetInput}" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-right font-mono text-white" />
+                  <button id="btn-raise" class="px-4 bg-red-600 hover:bg-red-500 rounded-lg font-bold">레이즈</button>
+                </div>
+                <div class="flex gap-2 h-12">
+                  <button id="btn-call" class="flex-1 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold">
+                    ${game.currentBet > myBet ? '콜 (Call)' : '체크 (Check)'}
+                  </button>
+                  <button id="btn-fold" class="flex-1 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold">다이 (Fold)</button>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+      document.getElementById('center-area').innerHTML = centerHTML;
+
+      // 채팅 렌더링
+      const chatBox = document.getElementById('chat-messages');
+      chatBox.innerHTML = roomData.chat.map(c => {
+        const isMe = c.sender === (isHost ? '방장' : '참여자');
+        return `
+          <div class="flex flex-col max-w-[90%] ${isMe ? 'self-end items-end' : 'self-start items-start'}">
+            <span class="text-xs text-gray-500 mb-1">${c.sender}</span>
+            <div class="px-3 py-2 rounded-xl ${isMe ? 'bg-blue-600' : 'bg-slate-700'}">${c.msg}</div>
+          </div>
+        `;
+      }).join('');
+      chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
+    // 9. 리스너 초기화 (Lobby Screen Events)
+    document.getElementById('btn-create-room').addEventListener('click', async () => {
+      if (!currentUser) return;
+      roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
+      
+      await setDoc(roomRef, {
+        roomId: roomCode, hostId: currentUser.uid, guestId: null, status: 'waiting', lastActive: Date.now(), chat: [],
+        game: {
+          hostMoney: 100000000, guestMoney: 100000000, pot: 0, deck: [], hostCards: [], guestCards: [],
+          phase: 0, turn: currentUser.uid, currentBet: 0, hostBetAmount: 0, guestBetAmount: 0, winner: null, message: '게임을 시작해주세요.'
         }
       });
-    } catch (e) {
-      console.error("Cleanup error:", e);
-    }
-  };
+      listenToRoom();
+    });
 
-  useEffect(() => {
-    if (currentScreen === 'lobby') cleanupOldRooms();
-  }, [currentScreen]);
-
-  // 실시간 방 데이터 수신
-  useEffect(() => {
-    if (!user || !roomCode || currentScreen !== 'game') return;
-
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
-    const unsubscribe = onSnapshot(roomRef, (docSnap) => {
+    document.getElementById('btn-join-room').addEventListener('click', async () => {
+      if (!currentUser) return;
+      const code = document.getElementById('join-code-input').value;
+      if(!code) return;
+      
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', code);
+      const docSnap = await getDoc(roomRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setRoomData(data);
-        if (data.status === 'disbanded') {
-          alert('방장이 방을 해산했습니다.');
-          setRoomCode('');
-          setCurrentScreen('lobby');
-        }
-      } else {
-        alert('존재하지 않거나 삭제된 방입니다.');
-        setRoomCode('');
-        setCurrentScreen('lobby');
-      }
-    }, (error) => {
-      console.error("Room sync error:", error);
+        if (data.guestId && data.guestId !== currentUser.uid) return alert('이미 꽉 찬 방입니다.');
+        await updateDoc(roomRef, { guestId: currentUser.uid, lastActive: Date.now() });
+        roomCode = code;
+        listenToRoom();
+      } else { alert('방 코드를 확인해주세요.'); }
     });
 
-    return () => unsubscribe();
-  }, [user, roomCode, currentScreen]);
-
-  // 방 생성
-  const createRoom = async () => {
-    if (!user) return;
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', code);
-    
-    await setDoc(roomRef, {
-      roomId: code,
-      hostId: user.uid,
-      guestId: null,
-      status: 'waiting', // waiting, playing, disbanded
-      lastActive: Date.now(),
-      chat: [],
-      game: {
-        hostMoney: 100000000, // 1억원
-        guestMoney: 100000000,
-        pot: 0,
-        deck: [],
-        hostCards: [],
-        guestCards: [],
-        phase: 0, // 0: 시작전, 1~4: 베팅라운드, 5: 쇼다운
-        turn: user.uid,
-        currentBet: 0,
-        hostBetAmount: 0,
-        guestBetAmount: 0,
-        winner: null,
-        message: '게임을 시작해주세요.'
-      }
-    });
-    
-    setRoomCode(code);
-    setCurrentScreen('game');
-  };
-
-  // 방 참가
-  const joinRoom = async (code) => {
-    if (!user) return;
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', code);
-    const docSnap = await getDoc(roomRef);
-    
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      if (data.guestId && data.guestId !== user.uid) {
-        alert('이미 꽉 찬 방입니다.');
-        return;
-      }
-      await updateDoc(roomRef, {
-        guestId: user.uid,
-        lastActive: Date.now()
-      });
-      setRoomCode(code);
-      setCurrentScreen('game');
-    } else {
-      alert('방 코드를 확인해주세요.');
-    }
-  };
-
-  // 렌더링 라우터
-  if (currentScreen === 'main') return <MainScreen onStart={() => setCurrentScreen('lobby')} onHowToPlay={() => setShowHowToPlay(true)} showHowToPlay={showHowToPlay} closeHowToPlay={() => setShowHowToPlay(false)} />;
-  if (currentScreen === 'lobby') return <LobbyScreen onBack={() => setCurrentScreen('main')} onCreate={createRoom} onJoin={joinRoom} />;
-  if (currentScreen === 'game') return <GameScreen user={user} roomCode={roomCode} roomData={roomData} setRoomCode={setRoomCode} setCurrentScreen={setCurrentScreen} db={db} appId={appId} />;
-}
-
-// ==========================================
-// 서브 컴포넌트: 메인 화면
-// ==========================================
-const MainScreen = ({ onStart, onHowToPlay, showHowToPlay, closeHowToPlay }) => (
-  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-    <div className="text-center mb-12">
-      <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 drop-shadow-lg mb-4">
-        세븐 포커 온라인
-      </h1>
-      <p className="text-gray-400 text-lg">최고의 전략과 운을 시험해보세요!</p>
-    </div>
-    
-    <div className="flex flex-col gap-4 w-full max-w-sm">
-      <button onClick={onStart} className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
-        게임 시작하기
-      </button>
-      <button onClick={onHowToPlay} className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
-        게임 방법
-      </button>
-    </div>
-
-    {showHowToPlay && (
-      <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-        <div className="bg-slate-800 text-white p-6 rounded-2xl max-w-lg w-full">
-          <h2 className="text-2xl font-bold mb-4 text-green-400">게임 방법</h2>
-          <ul className="list-disc pl-5 space-y-2 text-gray-300">
-            <li>1인당 시작 금액은 <strong>100,000,000원(1억원)</strong> 입니다.</li>
-            <li>게임 시작 시 기본 참가비 <strong>50,000원</strong>이 자동으로 차감됩니다.</li>
-            <li>처음에는 카드 4장(2장 비공개, 2장 공개)을 받고 시작합니다.</li>
-            <li>이후 카드를 1장씩 받을 때마다 1번씩, <strong>총 4번의 베팅 라운드</strong>가 진행됩니다.</li>
-            <li>베팅은 최소 <strong>10만원</strong>부터 <strong>5만원 단위</strong>로 가능합니다.</li>
-            <li>마지막 7번째 카드는 비공개로 지급되며 모든 라운드 종료 시 패를 공개(쇼다운)하여 승자를 가립니다.</li>
-            <li>게임 도중 '항복' 버튼을 누르면 상대방이 즉시 승리합니다.</li>
-          </ul>
-          <button onClick={closeHowToPlay} className="mt-6 w-full py-3 bg-red-500 hover:bg-red-600 rounded-xl font-bold">닫기</button>
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-// ==========================================
-// 서브 컴포넌트: 로비 화면
-// ==========================================
-const LobbyScreen = ({ onBack, onCreate, onJoin }) => {
-  const [joinCode, setJoinCode] = useState('');
-
-  return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 relative">
-      <button onClick={onBack} className="absolute top-4 left-4 text-white hover:text-green-400 p-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      
-      <h2 className="text-4xl font-bold text-white mt-12 mb-8">게임 로비</h2>
-      
-      <div className="bg-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-6">
-        <button onClick={onCreate} className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition-all">
-          방 생성하기 (방장)
-        </button>
-        
-        <div className="flex items-center">
-          <div className="flex-1 border-t border-slate-600"></div>
-          <span className="px-4 text-slate-400">또는</span>
-          <div className="flex-1 border-t border-slate-600"></div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <input 
-            type="text" 
-            placeholder="참여 코드 6자리 입력" 
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            className="w-full p-4 bg-slate-700 text-white rounded-xl text-center text-xl focus:outline-none focus:ring-2 focus:ring-green-400"
-            maxLength={6}
-          />
-          <button 
-            onClick={() => onJoin(joinCode)}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl transition-all"
-          >
-            참여하기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ==========================================
-// 서브 컴포넌트: 게임 화면
-// ==========================================
-const GameScreen = ({ user, roomCode, roomData, setRoomCode, setCurrentScreen, db, appId }) => {
-  const [chatMsg, setChatMsg] = useState('');
-  const [betInput, setBetInput] = useState(100000);
-  const [showRankings, setShowRankings] = useState(false);
-  const [showSurrender, setShowSurrender] = useState(false);
-  const chatEndRef = useRef(null);
-
-  // 자동 스크롤 - Hook은 조건부 반환 전에 호출되어야 함
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [roomData?.chat]);
-
-  if (!roomData) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">로딩중...</div>;
-
-  const isHost = user.uid === roomData.hostId;
-  const opponentId = isHost ? roomData.guestId : roomData.hostId;
-  const game = roomData.game;
-
-  // 플레이어 구분 데이터
-  const myMoney = isHost ? game.hostMoney : game.guestMoney;
-  const oppMoney = isHost ? game.guestMoney : game.hostMoney;
-  const myCards = isHost ? game.hostCards : game.guestCards;
-  const oppCards = isHost ? game.guestCards : game.hostCards;
-  const myBet = isHost ? game.hostBetAmount : game.guestBetAmount;
-  const oppBet = isHost ? game.guestBetAmount : game.hostBetAmount;
-  const isMyTurn = game.turn === user.uid;
-
-  // 파이어베이스 업데이트 유틸리티
-  const updateGame = async (updates) => {
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
-    await updateDoc(roomRef, { 
-      lastActive: Date.now(),
-      ...updates 
-    });
-  };
-
-  // 채팅 전송
-  const sendChat = async (e) => {
-    e.preventDefault();
-    if (!chatMsg.trim()) return;
-    const newChat = [...roomData.chat, { sender: isHost ? '방장' : '참여자', msg: chatMsg, time: Date.now() }];
-    await updateGame({ chat: newChat });
-    setChatMsg('');
-  };
-
-  // 방 해산 / 나가기
-  const leaveRoom = async () => {
-    if (isHost) {
-      await updateGame({ status: 'disbanded' });
-    } else {
-      await updateGame({ guestId: null });
-      setRoomCode('');
-      setCurrentScreen('lobby');
-    }
-  };
-
-  // 게임 시작 로직 (방장 전용)
-  const startGame = async () => {
-    if (!roomData.guestId) {
-      alert('참여자가 들어와야 시작할 수 있습니다.');
-      return;
-    }
-    
-    let deck = getDeck();
-    
-    // 참가비 차감
-    const ante = 50000;
-    const hMoney = game.hostMoney - ante;
-    const gMoney = game.guestMoney - ante;
-    const pot = ante * 2;
-
-    // 초기 카드 배분: 각각 4장 (앞 2장 시크릿, 뒤 2장 오픈)
-    const hostHand = [
-      {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true},
-      {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false}
-    ];
-    const guestHand = [
-      {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true},
-      {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false}
-    ];
-
-    await updateGame({
-      status: 'playing',
-      'game.hostMoney': hMoney,
-      'game.guestMoney': gMoney,
-      'game.pot': pot,
-      'game.deck': deck,
-      'game.hostCards': hostHand,
-      'game.guestCards': guestHand,
-      'game.phase': 1, // 1라운드
-      'game.turn': roomData.hostId, // 방장 먼저 시작
-      'game.currentBet': 0,
-      'game.hostBetAmount': 0,
-      'game.guestBetAmount': 0,
-      'game.winner': null,
-      'game.message': '라운드 1 베팅 시작!'
-    });
-  };
-
-  // 베팅 및 턴 진행 로직
-  const handleBet = async (action, amount = 0) => {
-    if (!isMyTurn || game.phase === 0 || game.phase === 5) return;
-
-    let newHostMoney = game.hostMoney;
-    let newGuestMoney = game.guestMoney;
-    let newPot = game.pot;
-    let newHostBet = game.hostBetAmount;
-    let newGuestBet = game.guestBetAmount;
-    let newTurn = opponentId;
-    let newPhase = game.phase;
-    let newDeck = [...game.deck];
-    let newHostCards = [...game.hostCards];
-    let newGuestCards = [...game.guestCards];
-    let msg = '';
-    let winner = null;
-
-    const callAmount = isHost ? game.currentBet - newHostBet : game.currentBet - newGuestBet;
-
-    if (action === 'fold') {
-      winner = opponentId;
-      msg = `${isHost ? '방장' : '참여자'}님이 다이(Fold)했습니다.`;
-      if (isHost) newGuestMoney += newPot; else newHostMoney += newPot;
-      newPhase = 5; // 종료
-    } 
-    else if (action === 'call') {
-      const pay = Math.min(callAmount, isHost ? newHostMoney : newGuestMoney);
-      if (isHost) { newHostMoney -= pay; newHostBet += pay; }
-      else { newGuestMoney -= pay; newGuestBet += pay; }
-      newPot += pay;
-      msg = `${isHost ? '방장' : '참여자'}님이 콜했습니다.`;
-    }
-    else if (action === 'raise') {
-      if (amount < 100000 || amount % 50000 !== 0) {
-        alert("10만원 이상, 5만원 단위로 베팅해야 합니다."); return;
-      }
-      const pay = callAmount + amount;
-      if (isHost) { newHostMoney -= pay; newHostBet += pay; }
-      else { newGuestMoney -= pay; newGuestBet += pay; }
-      newPot += pay;
-      msg = `${isHost ? '방장' : '참여자'}님이 ${amount.toLocaleString()}원을 레이즈했습니다.`;
-    }
-
-    const currentMaxBet = Math.max(newHostBet, newGuestBet);
-
-    // 라운드 종료 체크 (양쪽 베팅 금액이 같고, 둘 다 액션을 취했을 때 -> 단순화: 콜하면 라운드 종료)
-    // 레이즈를 안했다면 콜/체크이므로 베팅액이 같아짐
-    if (action !== 'fold' && newHostBet === newGuestBet) {
-      if (newPhase < 4) {
-        // 다음 라운드, 카드 1장 지급 (오픈)
-        newPhase++;
-        newHostCards.push({...newDeck.pop(), isSecret: false});
-        newGuestCards.push({...newDeck.pop(), isSecret: false});
-        msg = `라운드 ${newPhase} 시작! 새로운 카드가 지급되었습니다.`;
-        newHostBet = 0; newGuestBet = 0; // 라운드별 베팅액 초기화
-        newTurn = roomData.hostId; // 다음 라운드는 방장부터
-      } else if (newPhase === 4) {
-        // 마지막 쇼다운
-        newPhase = 5;
-        // 7번째 카드는 시크릿으로 이미 받아야하지만, 요구사항에 맞춰 시크릿 카드 이후 1장씩 총 4번 = 총 4장 추가
-        // 즉 초기4장 + 추가3장 = 7장이 됨. 여기서 마지막 1장을 주면 7장이 됨.
-        // 현재 로직: 라운드1(초기 4장), 라운드2(+1장=5), 라운드3(+1장=6), 라운드4(+1장=7). 라운드4 콜하면 쇼다운.
-        if (newHostCards.length === 6) {
-           newHostCards.push({...newDeck.pop(), isSecret: true}); // 마지막장은 시크릿
-           newGuestCards.push({...newDeck.pop(), isSecret: true});
-        }
-        
-        // 승자 판별
-        const hHand = evaluateHand(newHostCards);
-        const gHand = evaluateHand(newGuestCards);
-        if (hHand.score > gHand.score) {
-          winner = roomData.hostId;
-          newHostMoney += newPot;
-          msg = `방장 승리! (${hHand.name} vs ${gHand.name})`;
-        } else if (gHand.score > hHand.score) {
-          winner = roomData.guestId;
-          newGuestMoney += newPot;
-          msg = `참여자 승리! (${gHand.name} vs ${hHand.name})`;
+    const listenToRoom = () => {
+      window.showScreen('game-screen');
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
+      unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+        if (docSnap.exists()) {
+          roomData = docSnap.data();
+          if (roomData.status === 'disbanded') {
+            alert('방장이 방을 해산했습니다.');
+            roomCode = ''; unsubscribeRoom(); window.showScreen('lobby-screen');
+          } else {
+            renderGameScreen();
+          }
         } else {
-          // 무승부
-          newHostMoney += newPot / 2;
-          newGuestMoney += newPot / 2;
-          msg = `무승부! (${hHand.name})`;
-          winner = 'draw';
+          alert('존재하지 않거나 삭제된 방입니다.');
+          roomCode = ''; if(unsubscribeRoom) unsubscribeRoom(); window.showScreen('lobby-screen');
         }
-      }
-    }
-
-    const updates = {
-      'game.hostMoney': newHostMoney,
-      'game.guestMoney': newGuestMoney,
-      'game.pot': newPot,
-      'game.currentBet': currentMaxBet,
-      'game.hostBetAmount': newHostBet,
-      'game.guestBetAmount': newGuestBet,
-      'game.turn': newTurn,
-      'game.phase': newPhase,
-      'game.deck': newDeck,
-      'game.hostCards': newHostCards,
-      'game.guestCards': newGuestCards,
-      'game.message': msg
+      }, (err) => console.error(err));
     };
-    if (winner !== null) updates['game.winner'] = winner;
 
-    await updateGame(updates);
-    setBetInput(100000); // 인풋 초기화
-  };
+    // 10. 이벤트 위임 (동적 생성되는 게임 버튼들)
+    document.addEventListener('click', async (e) => {
+      if (!currentUser || !roomData) return;
+      const target = e.target;
 
-  // 항복 로직
-  const handleSurrender = async () => {
-    if (window.confirm("정말 항복하시겠습니까? 상대방이 승리합니다.")) {
-      const newPot = game.pot;
-      let newHostMoney = game.hostMoney;
-      let newGuestMoney = game.guestMoney;
-      
-      if (isHost) newGuestMoney += newPot;
-      else newHostMoney += newPot;
+      const isHost = currentUser.uid === roomData.hostId;
+      const opponentId = isHost ? roomData.guestId : roomData.hostId;
+      const game = roomData.game;
 
-      await updateGame({
-        'game.phase': 5,
-        'game.winner': opponentId,
-        'game.message': `${isHost ? '방장' : '참여자'}님이 항복했습니다.`,
-        'game.hostMoney': newHostMoney,
-        'game.guestMoney': newGuestMoney
-      });
-      setShowSurrender(false);
-    }
-  };
+      if (target.closest('#btn-start-game')) {
+        if (!roomData.guestId) return alert('참여자가 들어와야 시작할 수 있습니다.');
+        let deck = getDeck();
+        const ante = 50000;
+        const hMoney = game.hostMoney - ante;
+        const gMoney = game.guestMoney - ante;
+        const pot = ante * 2;
+        const hostHand = [ {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false} ];
+        const guestHand = [ {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false} ];
+        await updateGameData({
+          status: 'playing', 'game.hostMoney': hMoney, 'game.guestMoney': gMoney, 'game.pot': pot, 'game.deck': deck,
+          'game.hostCards': hostHand, 'game.guestCards': guestHand, 'game.phase': 1, 'game.turn': roomData.hostId,
+          'game.currentBet': 0, 'game.hostBetAmount': 0, 'game.guestBetAmount': 0, 'game.winner': null, 'game.message': '라운드 1 베팅 시작!'
+        });
+      } else if (target.closest('#btn-disband-room')) {
+        window.leaveRoom();
+      } else if (target.closest('#btn-call') || target.closest('#btn-fold') || target.closest('#btn-raise')) {
+        let action = target.closest('#btn-call') ? 'call' : target.closest('#btn-fold') ? 'fold' : 'raise';
+        let amount = action === 'raise' ? Number(document.getElementById('bet-input-val').value) : 0;
 
-  // 카드 렌더링 컴포넌트
-  const Card = ({ card, hidden }) => {
-    if (hidden || (card.isSecret && game.phase !== 5)) {
-      return (
-        <div className="w-16 h-24 bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-white rounded-lg shadow-md m-1 flex items-center justify-center">
-          <div className="w-12 h-20 border border-blue-400 rounded-sm bg-blue-800 opacity-50 flex items-center justify-center">
-            <span className="text-white opacity-20 font-bold text-2xl">?</span>
-          </div>
-        </div>
-      );
-    }
-    const isRed = card.suit === '♥' || card.suit === '♦';
-    return (
-      <div className={`w-16 h-24 bg-white border border-gray-300 rounded-lg shadow-md m-1 p-2 flex flex-col justify-between ${isRed ? 'text-red-600' : 'text-black'}`}>
-        <div className="text-sm font-bold leading-none">{card.rank}</div>
-        <div className="text-2xl text-center flex-1 flex items-center justify-center">{card.suit}</div>
-      </div>
-    );
-  };
+        let newHostMoney = game.hostMoney, newGuestMoney = game.guestMoney, newPot = game.pot;
+        let newHostBet = game.hostBetAmount, newGuestBet = game.guestBetAmount;
+        let newTurn = opponentId, newPhase = game.phase, newDeck = [...game.deck];
+        let newHostCards = [...game.hostCards], newGuestCards = [...game.guestCards];
+        let msg = '', winner = null;
+        const callAmount = isHost ? game.currentBet - newHostBet : game.currentBet - newGuestBet;
 
-  return (
-    <div className="h-screen bg-green-900 flex text-white relative font-sans overflow-hidden">
-      
-      {/* 왼쪽 탑 버튼바 */}
-      <div className="absolute top-4 left-4 z-10 flex gap-4">
-        <button onClick={leaveRoom} className="p-2 bg-slate-800 bg-opacity-50 rounded-full hover:bg-opacity-80 transition">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <div className="bg-black bg-opacity-50 px-4 py-2 rounded-lg font-mono tracking-widest border border-green-700">
-          방 코드: {roomCode}
-        </div>
-      </div>
+        if (action === 'fold') {
+          winner = opponentId;
+          msg = `${isHost ? '방장' : '참여자'}님이 다이(Fold)했습니다.`;
+          if (isHost) newGuestMoney += newPot; else newHostMoney += newPot;
+          newPhase = 5;
+        } else if (action === 'call') {
+          const pay = Math.min(callAmount, isHost ? newHostMoney : newGuestMoney);
+          if (isHost) { newHostMoney -= pay; newHostBet += pay; } else { newGuestMoney -= pay; newGuestBet += pay; }
+          newPot += pay;
+          msg = `${isHost ? '방장' : '참여자'}님이 콜했습니다.`;
+        } else if (action === 'raise') {
+          if (amount < 100000 || amount % 50000 !== 0) return alert("10만원 이상, 5만원 단위로 베팅해야 합니다.");
+          const pay = callAmount + amount;
+          if (isHost) { newHostMoney -= pay; newHostBet += pay; } else { newGuestMoney -= pay; newGuestBet += pay; }
+          newPot += pay;
+          msg = `${isHost ? '방장' : '참여자'}님이 ${amount.toLocaleString()}원을 레이즈했습니다.`;
+        }
 
-      {/* 우측 탑 버튼바 */}
-      <div className="absolute top-4 right-4 z-10 flex gap-3">
-        <button onClick={() => setShowRankings(true)} className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold shadow-md">
-          족보 보기
-        </button>
-        {game.phase > 0 && game.phase < 5 && (
-          <button onClick={() => setShowSurrender(true)} className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold shadow-md">
-            항복
-          </button>
-        )}
-      </div>
+        const currentMaxBet = Math.max(newHostBet, newGuestBet);
+        if (action !== 'fold' && newHostBet === newGuestBet) {
+          if (newPhase < 4) {
+            newPhase++;
+            newHostCards.push({...newDeck.pop(), isSecret: false});
+            newGuestCards.push({...newDeck.pop(), isSecret: false});
+            msg = `라운드 ${newPhase} 시작! 새로운 카드가 지급되었습니다.`;
+            newHostBet = 0; newGuestBet = 0;
+            newTurn = roomData.hostId;
+          } else if (newPhase === 4) {
+            newPhase = 5;
+            if (newHostCards.length === 6) {
+               newHostCards.push({...newDeck.pop(), isSecret: true});
+               newGuestCards.push({...newDeck.pop(), isSecret: true});
+            }
+            const hHand = evaluateHand(newHostCards); const gHand = evaluateHand(newGuestCards);
+            if (hHand.score > gHand.score) { winner = roomData.hostId; newHostMoney += newPot; msg = `방장 승리! (${hHand.name})`; }
+            else if (gHand.score > hHand.score) { winner = roomData.guestId; newGuestMoney += newPot; msg = `참여자 승리! (${gHand.name})`; }
+            else { newHostMoney += newPot / 2; newGuestMoney += newPot / 2; msg = `무승부! (${hHand.name})`; winner = 'draw'; }
+          }
+        }
+        const updates = {
+          'game.hostMoney': newHostMoney, 'game.guestMoney': newGuestMoney, 'game.pot': newPot, 'game.currentBet': currentMaxBet,
+          'game.hostBetAmount': newHostBet, 'game.guestBetAmount': newGuestBet, 'game.turn': newTurn, 'game.phase': newPhase,
+          'game.deck': newDeck, 'game.hostCards': newHostCards, 'game.guestCards': newGuestCards, 'game.message': msg
+        };
+        if (winner !== null) updates['game.winner'] = winner;
+        await updateGameData(updates);
+      } else if (target.closest('#btn-confirm-surrender')) {
+        const newPot = game.pot;
+        let newHostMoney = game.hostMoney, newGuestMoney = game.guestMoney;
+        if (isHost) newGuestMoney += newPot; else newHostMoney += newPot;
+        await updateGameData({
+          'game.phase': 5, 'game.winner': opponentId, 'game.message': `${isHost ? '방장' : '참여자'}님이 항복했습니다.`,
+          'game.hostMoney': newHostMoney, 'game.guestMoney': newGuestMoney
+        });
+        window.closeModal('surrender-modal');
+      }
+    });
 
-      {/* 메인 게임 테이블 영역 */}
-      <div className="flex-1 flex flex-col items-center justify-between py-12 relative border-r border-green-800">
-        
-        {/* 중앙 테이블 데코레이션 */}
-        <div className="absolute inset-4 border-2 border-green-800 rounded-full opacity-20 pointer-events-none"></div>
+    // 11. 채팅 전송
+    document.getElementById('chat-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if (!msg || !roomData) return;
+      const isHost = currentUser.uid === roomData.hostId;
+      const newChat = [...roomData.chat, { sender: isHost ? '방장' : '참여자', msg: msg, time: Date.now() }];
+      await updateGameData({ chat: newChat });
+      input.value = '';
+    });
 
-        {/* 상대방 영역 (Top) */}
-        <div className="flex flex-col items-center z-10">
-          <div className="bg-black bg-opacity-40 px-6 py-2 rounded-xl mb-4 text-center">
-            <h3 className="text-lg font-bold text-gray-300">{isHost ? '참여자' : '방장'} (상대방)</h3>
-            <p className="text-yellow-400 font-mono text-xl">{oppMoney.toLocaleString()} 원</p>
-            {game.phase > 0 && <p className="text-sm text-gray-400">이번 턴 베팅: {oppBet.toLocaleString()} 원</p>}
-          </div>
-          <div className="flex justify-center h-28">
-            {game.phase === 0 ? (
-               <div className="text-green-700 opacity-50 flex items-center h-full">대기중...</div>
-            ) : (
-              oppCards.map((card, idx) => (
-                <Card key={`opp-${idx}`} card={card} hidden={card.isSecret && game.phase !== 5} />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* 중앙 베팅/정보 영역 (Middle) */}
-        <div className="flex flex-col items-center justify-center w-full max-w-lg z-10">
-          {game.phase === 0 ? (
-            <div className="flex flex-col items-center bg-black bg-opacity-60 p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
-              <h2 className="text-2xl mb-6 text-green-400">{roomData.guestId ? '모두 준비되었습니다' : '참여자를 기다리는 중...'}</h2>
-              {isHost ? (
-                <div className="flex gap-4">
-                  <button onClick={startGame} className="px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-extrabold rounded-xl text-xl shadow-lg transition">게임 시작하기</button>
-                  <button onClick={leaveRoom} className="px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xl shadow-lg transition">방 해산하기</button>
-                </div>
-              ) : (
-                <p className="text-gray-300">방장이 게임을 시작하기를 기다려주세요.</p>
-              )}
-            </div>
-          ) : (
-            <div className="w-full flex flex-col items-center">
-              <div className="bg-black bg-opacity-70 px-8 py-6 rounded-3xl text-center border-2 border-yellow-600 shadow-2xl mb-6 transform scale-110">
-                <p className="text-sm text-yellow-500 mb-1 font-bold tracking-widest">TOTAL POT</p>
-                <p className="text-4xl font-mono text-yellow-400">{game.pot.toLocaleString()} <span className="text-xl">원</span></p>
-              </div>
-              
-              <div className="bg-slate-800 bg-opacity-80 px-6 py-3 rounded-full text-center mb-6 max-w-sm w-full truncate border border-slate-600">
-                {game.message}
-              </div>
-
-              {/* 게임 종료 (쇼다운) */}
-              {game.phase === 5 && isHost && (
-                <button onClick={startGame} className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl shadow-lg mt-4 animate-bounce">
-                  다음 게임 시작 (참가비 5만)
-                </button>
-              )}
-
-              {/* 베팅 UI */}
-              {game.phase > 0 && game.phase < 5 && isMyTurn && (
-                <div className="bg-slate-800 p-4 rounded-xl flex flex-col gap-3 shadow-2xl border border-slate-600 w-full max-w-md">
-                  <div className="flex justify-between text-sm text-gray-300 px-2">
-                    <span>콜 비용: {(game.currentBet - myBet).toLocaleString()}원</span>
-                    <span>내 턴입니다!</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="number" 
-                      min={100000} 
-                      step={50000} 
-                      value={betInput} 
-                      onChange={(e) => setBetInput(Number(e.target.value))}
-                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-right font-mono"
-                    />
-                    <button onClick={() => handleBet('raise', betInput)} className="px-4 bg-red-600 hover:bg-red-500 rounded-lg font-bold">레이즈</button>
-                  </div>
-                  <div className="flex gap-2 h-12">
-                    <button onClick={() => handleBet('call')} className="flex-1 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold">
-                      {game.currentBet > myBet ? '콜 (Call)' : '체크 (Check)'}
-                    </button>
-                    <button onClick={() => handleBet('fold')} className="flex-1 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold">다이 (Fold)</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 내 영역 (Bottom) */}
-        <div className="flex flex-col items-center z-10">
-           <div className="flex justify-center h-28 mb-4">
-            {game.phase === 0 ? (
-               <div className="text-green-700 opacity-50 flex items-center h-full">대기중...</div>
-            ) : (
-              myCards.map((card, idx) => (
-                <Card key={`my-${idx}`} card={card} hidden={false} />
-              ))
-            )}
-          </div>
-          <div className="bg-black bg-opacity-80 border-t-4 border-green-500 px-8 py-3 rounded-t-2xl text-center min-w-[250px] shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-1">{isHost ? '방장' : '참여자'} (나)</h3>
-            <p className="text-yellow-400 font-mono text-2xl font-bold">{myMoney.toLocaleString()} 원</p>
-            {game.phase > 0 && <p className="text-sm text-gray-400 mt-1">이번 턴 베팅: {myBet.toLocaleString()} 원</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* 오른쪽 채팅창 패널 */}
-      <div className="w-80 bg-slate-900 border-l border-slate-700 flex flex-col z-20">
-        <div className="p-4 bg-slate-800 border-b border-slate-700 font-bold text-center">
-          실시간 채팅
-        </div>
-        <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 scrollbar-thin scrollbar-thumb-slate-600">
-          {roomData.chat.map((c, i) => (
-            <div key={i} className={`flex flex-col max-w-[90%] ${c.sender === (isHost ? '방장' : '참여자') ? 'self-end items-end' : 'self-start items-start'}`}>
-              <span className="text-xs text-gray-500 mb-1">{c.sender}</span>
-              <div className={`px-3 py-2 rounded-xl ${c.sender === (isHost ? '방장' : '참여자') ? 'bg-blue-600' : 'bg-slate-700'}`}>
-                {c.msg}
-              </div>
-            </div>
-          ))}
-          <div ref={chatEndRef} />
-        </div>
-        <form onSubmit={sendChat} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
-          <input 
-            type="text" 
-            value={chatMsg} 
-            onChange={(e) => setChatMsg(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500"
-            placeholder="메시지 입력..."
-          />
-          <button type="submit" className="bg-green-600 px-3 rounded-lg hover:bg-green-500 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-          </button>
-        </form>
-      </div>
-
-      {/* 모달: 족보 안내 */}
-      {showRankings && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-slate-600">
-            <h2 className="text-xl font-bold mb-4 text-yellow-500 text-center border-b border-slate-600 pb-2">세븐 포커 족보</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-red-400">로얄 스트레이트 플러쉬</span><span>가장 강함</span></div>
-              <div className="flex justify-between"><span>스트레이트 플러쉬</span><span></span></div>
-              <div className="flex justify-between"><span>포카드</span><span>같은 숫자 4장</span></div>
-              <div className="flex justify-between"><span>풀하우스</span><span>트리플 + 원페어</span></div>
-              <div className="flex justify-between"><span>플러쉬</span><span>같은 무늬 5장</span></div>
-              <div className="flex justify-between"><span>스트레이트</span><span>연속된 숫자 5장</span></div>
-              <div className="flex justify-between"><span>트리플</span><span>같은 숫자 3장</span></div>
-              <div className="flex justify-between"><span>투페어</span><span>같은 숫자 2장씩 2쌍</span></div>
-              <div className="flex justify-between"><span>원페어</span><span>같은 숫자 2장</span></div>
-              <div className="flex justify-between text-gray-400 border-t border-slate-700 pt-2"><span>탑 (High Card)</span><span>가장 약함</span></div>
-            </div>
-            <button onClick={() => setShowRankings(false)} className="mt-6 w-full py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">닫기</button>
-          </div>
-        </div>
-      )}
-
-      {/* 모달: 항복 확인 */}
-      {showSurrender && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-red-900 text-center">
-            <h2 className="text-2xl font-bold mb-2 text-red-500">항복 확인</h2>
-            <p className="text-gray-300 mb-6">항복에 동의하십니까?<br/>확인 시 즉시 패배 처리되며 팟에 쌓인 돈은 상대방이 가져갑니다.</p>
-            <div className="flex gap-4">
-              <button onClick={handleSurrender} className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-lg font-bold">확인</button>
-              <button onClick={() => setShowSurrender(false)} className="flex-1 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">취소</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-};
+  </script>
+</body>
+</html>
