@@ -4,170 +4,1268 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>세븐 포커 온라인</title>
-  <!-- 스페이드 모양 SVG 파비콘 추가 -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M12 2C8 7 4 11.5 4 15C4 17.2 5.8 19 8 19C9.7 19 11.1 18 11.7 16.5h0.6C12.9 18 14.3 19 16 19C18.2 19 20 17.2 20 15C20 11.5 16 7 12 2zM11 19v3h2v-3h-2z'/%3E%3C/svg%3E" type="image/svg+xml">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c9a227'%3E%3Cpath d='M12 2C8 7 4 11.5 4 15C4 17.2 5.8 19 8 19C9.7 19 11.1 18 11.7 16.5h0.6C12.9 18 14.3 19 16 19C18.2 19 20 17.2 20 15C20 11.5 16 7 12 2zM11 19v3h2v-3h-2z'/%3E%3C/svg%3E" type="image/svg+xml">
   <style>
-    /* Custom Scrollbar for Chat */
-    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-    .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; }
+    :root {
+      --gold: #c9a227;
+      --gold-light: #f0d060;
+      --gold-dark: #8a6c10;
+      --felt: #0d4a1e;
+      --felt-light: #165c28;
+      --felt-dark: #082d12;
+      --dark: #0a0a0f;
+      --dark-card: #12121a;
+      --dark-panel: #1a1a28;
+      --accent: #c9a227;
+      --red: #e03030;
+      --blue: #2060d0;
+      --text-muted: #8888aa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--dark);
+      color: #fff;
+      font-family: 'Noto Sans KR', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* ====== BACKGROUND PATTERNS ====== */
+    .felt-bg {
+      background-color: var(--felt);
+      background-image:
+        radial-gradient(ellipse at 50% 50%, rgba(22, 92, 40, 0.8) 0%, rgba(8, 45, 18, 0.95) 100%),
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 11px),
+        repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 11px);
+    }
+
+    /* ====== SCREENS ====== */
+    .screen { position: absolute; inset: 0; transition: opacity 0.4s, transform 0.4s; }
+    .screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+
+    /* ====== MAIN SCREEN ====== */
+    #main-screen {
+      background: radial-gradient(ellipse at 50% 40%, #1a1a2e 0%, #0a0a0f 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .main-bg-pattern {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(201, 162, 39, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(201, 162, 39, 0.06) 0%, transparent 50%);
+    }
+
+    .suit-decoration {
+      position: absolute;
+      font-size: 180px;
+      opacity: 0.04;
+      animation: floatSuit 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes floatSuit {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(5deg); }
+    }
+
+    .logo-container {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .logo-badge {
+      display: inline-block;
+      border: 2px solid var(--gold);
+      padding: 6px 20px;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: var(--gold);
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .logo-badge::before, .logo-badge::after {
+      content: '◆';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gold);
+      font-size: 10px;
+    }
+    .logo-badge::before { left: -14px; }
+    .logo-badge::after { right: -14px; }
+
+    .logo-title {
+      font-family: 'Cinzel', serif;
+      font-size: 64px;
+      font-weight: 900;
+      line-height: 1;
+      background: linear-gradient(180deg, #f0d060 0%, #c9a227 40%, #8a6c10 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: none;
+      filter: drop-shadow(0 4px 20px rgba(201,162,39,0.4));
+      margin-bottom: 8px;
+    }
+
+    .logo-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      letter-spacing: 3px;
+    }
+
+    .card-suits-row {
+      display: flex;
+      gap: 20px;
+      font-size: 28px;
+      margin-top: 16px;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .main-buttons {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 18px 24px;
+      background: linear-gradient(135deg, #c9a227 0%, #f0d060 50%, #c9a227 100%);
+      border: none;
+      color: #0a0a0f;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(201,162,39,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(201,162,39,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+      transform: skewX(-20deg);
+      animation: btnShine 4s ease-in-out infinite;
+    }
+
+    @keyframes btnShine {
+      0%, 70%, 100% { left: -60%; }
+      40% { left: 120%; }
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 16px 24px;
+      background: transparent;
+      border: 1px solid rgba(201,162,39,0.4);
+      color: rgba(255,255,255,0.8);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201,162,39,0.05);
+    }
+
+    /* ====== LOBBY SCREEN ====== */
+    #lobby-screen {
+      background: radial-gradient(ellipse at 50% 30%, #1a1a2e 0%, #0a0a0f 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .back-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(201,162,39,0.1); }
+
+    .lobby-card {
+      background: linear-gradient(135deg, #12121a 0%, #1a1a28 100%);
+      border: 1px solid rgba(201,162,39,0.2);
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,162,39,0.1);
+    }
+
+    .lobby-title {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gold);
+      text-align: center;
+      margin-bottom: 32px;
+      letter-spacing: 3px;
+    }
+
+    .lobby-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+    .lobby-divider::before, .lobby-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .lobby-input {
+      width: 100%;
+      padding: 16px 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 18px;
+      letter-spacing: 8px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 12px;
+    }
+    .lobby-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.1);
+    }
+    .lobby-input::placeholder { letter-spacing: 1px; color: rgba(255,255,255,0.2); font-size: 13px; }
+
+    .btn-create {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--felt-light), var(--felt-dark));
+      border: 1px solid rgba(201,162,39,0.4);
+      color: var(--gold);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .btn-create:hover {
+      background: linear-gradient(135deg, #1d7a35, var(--felt-light));
+      border-color: var(--gold);
+      box-shadow: 0 4px 20px rgba(201,162,39,0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-join {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #1a2040, #0d1228);
+      border: 1px solid rgba(60,100,200,0.4);
+      color: #7090e0;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-join:hover {
+      background: linear-gradient(135deg, #202860, #151e40);
+      border-color: #7090e0;
+      color: #90b0ff;
+      transform: translateY(-1px);
+    }
+
+    /* ====== GAME SCREEN ====== */
+    #game-screen {
+      display: flex;
+    }
+
+    .game-board {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 80px 20px 20px;
+      overflow: hidden;
+    }
+
+    /* Oval table */
+    .table-oval {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 75%;
+      height: 68%;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 40%, #1a6030 0%, var(--felt) 50%, var(--felt-dark) 100%);
+      border: 12px solid #3d2810;
+      box-shadow:
+        inset 0 0 60px rgba(0,0,0,0.4),
+        0 0 0 4px #5a3c18,
+        0 0 0 6px #2a1a08,
+        0 20px 60px rgba(0,0,0,0.8);
+      pointer-events: none;
+    }
+
+    .table-oval::before {
+      content: '';
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .table-oval::after {
+      content: '♠ SEVEN POKER ♠';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: rgba(255,255,255,0.06);
+      white-space: nowrap;
+    }
+
+    /* Top bar */
+    .game-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: linear-gradient(180deg, rgba(10,10,15,0.98) 0%, rgba(10,10,15,0) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
+    }
+
+    .room-code-badge {
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(201,162,39,0.3);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      letter-spacing: 4px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .room-code-badge span { color: var(--text-muted); font-size: 10px; }
+
+    .top-action-btns { display: flex; gap: 10px; align-items: center; }
+
+    .btn-rankings {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, rgba(201,162,39,0.15), rgba(201,162,39,0.05));
+      border: 1px solid rgba(201,162,39,0.4);
+      border-radius: 6px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-rankings:hover { background: rgba(201,162,39,0.25); box-shadow: 0 0 15px rgba(201,162,39,0.2); }
+
+    .btn-surrender-top {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, rgba(200,40,40,0.15), rgba(200,40,40,0.05));
+      border: 1px solid rgba(200,40,40,0.4);
+      border-radius: 6px;
+      color: #e07070;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-surrender-top:hover { background: rgba(200,40,40,0.25); }
+
+    /* Player areas */
+    .player-area {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .player-info-box {
+      background: linear-gradient(135deg, rgba(10,10,15,0.95) 0%, rgba(20,20,30,0.9) 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px 24px;
+      text-align: center;
+      min-width: 200px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .player-info-box.is-turn {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold), 0 0 20px rgba(201,162,39,0.3), 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .player-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .player-name {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .player-money {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .player-bet-badge {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #7a9e7a;
+      letter-spacing: 1px;
+    }
+
+    .turn-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+      animation: pulse 1s ease-in-out infinite;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Cards */
+    .cards-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+
+    .playing-card {
+      width: 62px;
+      height: 90px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px;
+      position: relative;
+      transition: transform 0.2s;
+      animation: cardDeal 0.3s ease-out;
+    }
+
+    @keyframes cardDeal {
+      from { transform: scale(0.5) rotateY(90deg); opacity: 0; }
+      to { transform: scale(1) rotateY(0deg); opacity: 1; }
+    }
+
+    .playing-card.red { color: #c9170f; }
+    .playing-card.black { color: #1a1a1a; }
+
+    .playing-card.hidden-card {
+      background: linear-gradient(135deg, #1a2060 0%, #0d1240 100%);
+      border: 1px solid rgba(100,140,255,0.3);
+    }
+
+    .card-corner { font-size: 13px; font-weight: 800; line-height: 1; }
+    .card-corner.bottom { transform: rotate(180deg); }
+    .card-suit-center { font-size: 28px; text-align: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+    .hidden-pattern {
+      position: absolute;
+      inset: 4px;
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(80,120,200,0.15) 4px, rgba(80,120,200,0.15) 5px);
+      border-radius: 5px;
+      border: 1px solid rgba(100,140,255,0.15);
+    }
+
+    .hidden-q {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 30px;
+      opacity: 0.3;
+    }
+
+    /* Center area */
+    .center-area {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .pot-display {
+      background: rgba(0,0,0,0.7);
+      border: 2px solid var(--gold-dark);
+      border-radius: 10px;
+      padding: 14px 32px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(201,162,39,0.15), inset 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .pot-label {
+      font-size: 9px;
+      letter-spacing: 5px;
+      color: var(--gold-dark);
+      margin-bottom: 4px;
+    }
+
+    .pot-amount {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow: 0 0 20px rgba(201,162,39,0.5);
+    }
+
+    .game-message {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 8px 24px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 1px;
+      max-width: 380px;
+      text-align: center;
+    }
+
+    /* Betting controls */
+    .betting-panel {
+      background: linear-gradient(135deg, rgba(10,10,15,0.97) 0%, rgba(18,18,28,0.95) 100%);
+      border: 1px solid rgba(201,162,39,0.2);
+      border-top: 2px solid var(--gold);
+      border-radius: 12px;
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    }
+
+    .betting-top-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .your-turn-badge {
+      background: rgba(201,162,39,0.15);
+      border: 1px solid var(--gold);
+      border-radius: 4px;
+      padding: 3px 10px;
+      color: var(--gold);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .raise-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .bet-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      text-align: right;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .bet-input:focus { border-color: var(--gold); }
+
+    .btn-raise {
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #6a1a1a, #4a0a0a);
+      border: 1px solid rgba(200,60,60,0.4);
+      border-radius: 6px;
+      color: #e07070;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .btn-raise:hover { background: linear-gradient(135deg, #8a2a2a, #6a1010); border-color: #e07070; }
+
+    .action-btns {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-call {
+      padding: 14px;
+      background: linear-gradient(135deg, #1a3a6a, #0d2040);
+      border: 1px solid rgba(60,120,220,0.4);
+      border-radius: 8px;
+      color: #90b0ff;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .btn-call:hover { background: linear-gradient(135deg, #1e4a8a, #122860); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(60,120,220,0.3); }
+
+    .btn-fold {
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .btn-fold:hover { background: rgba(200,60,60,0.1); border-color: rgba(200,60,60,0.3); color: #e07070; }
+
+    .waiting-notice {
+      text-align: center;
+      padding: 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+      letter-spacing: 2px;
+    }
+
+    /* Start / waiting area */
+    .start-panel {
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(201,162,39,0.2);
+      border-radius: 16px;
+      padding: 32px 48px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+    }
+
+    .start-panel h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      color: var(--gold);
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    .start-panel-btns { display: flex; gap: 12px; }
+
+    .btn-start-game-main {
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #c9a227 0%, #f0d060 50%, #c9a227 100%);
+      border: none;
+      border-radius: 8px;
+      color: #0a0a0f;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(201,162,39,0.4);
+    }
+    .btn-start-game-main:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,162,39,0.5); }
+
+    .btn-disband {
+      padding: 16px 32px;
+      background: rgba(200,40,40,0.1);
+      border: 1px solid rgba(200,40,40,0.4);
+      border-radius: 8px;
+      color: #e07070;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-disband:hover { background: rgba(200,40,40,0.2); }
+
+    .next-game-btn {
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #1a4a8a, #0d2860);
+      border: 1px solid rgba(80,140,220,0.5);
+      border-radius: 8px;
+      color: #90b0ff;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      animation: pulseBlue 2s ease-in-out infinite;
+      transition: all 0.2s;
+    }
+
+    @keyframes pulseBlue {
+      0%, 100% { box-shadow: 0 0 20px rgba(80,140,220,0.3); }
+      50% { box-shadow: 0 0 40px rgba(80,140,220,0.6); }
+    }
+
+    .next-game-btn:hover { transform: translateY(-2px); }
+
+    /* Chat panel */
+    .chat-panel {
+      width: 280px;
+      background: linear-gradient(180deg, #0d0d16 0%, #0a0a12 100%);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .chat-header {
+      padding: 18px 20px;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      letter-spacing: 4px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
+    .chat-msg.me { align-self: flex-end; align-items: flex-end; }
+    .chat-msg.other { align-self: flex-start; align-items: flex-start; }
+    .chat-sender { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 3px; }
+    .chat-bubble { padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; }
+    .chat-msg.me .chat-bubble { background: rgba(60,100,200,0.25); border: 1px solid rgba(60,100,200,0.3); }
+    .chat-msg.other .chat-bubble { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+
+    .chat-form {
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: rgba(201,162,39,0.4); }
+    .chat-input::placeholder { color: rgba(255,255,255,0.2); }
+
+    .chat-send-btn {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, rgba(201,162,39,0.3), rgba(201,162,39,0.1));
+      border: 1px solid rgba(201,162,39,0.4);
+      border-radius: 50%;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .chat-send-btn:hover { background: rgba(201,162,39,0.3); }
+
+    /* ====== MODALS ====== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal-box {
+      background: linear-gradient(135deg, #12121a 0%, #1a1a28 100%);
+      border: 1px solid rgba(201,162,39,0.25);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+      animation: modalIn 0.25s ease-out;
+    }
+
+    @keyframes modalIn {
+      from { transform: scale(0.9) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    .modal-title.gold { color: var(--gold); }
+    .modal-title.red { color: #e05050; }
+
+    .ranking-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .ranking-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 13px;
+    }
+
+    .ranking-item.top {
+      background: rgba(201,162,39,0.08);
+      border-color: rgba(201,162,39,0.2);
+    }
+
+    .ranking-item.top .rank-name { color: var(--gold); }
+    .rank-name { font-weight: 700; }
+    .rank-desc { color: var(--text-muted); font-size: 11px; }
+
+    .rules-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .rule-item {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
+    }
+
+    .rule-num {
+      width: 22px;
+      height: 22px;
+      background: rgba(201,162,39,0.15);
+      border: 1px solid rgba(201,162,39,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--gold);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .btn-close-modal {
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-close-modal:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    .surrender-text {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .modal-actions { display: flex; gap: 12px; }
+
+    .btn-confirm-red {
+      flex: 1;
+      padding: 14px;
+      background: linear-gradient(135deg, rgba(200,40,40,0.3), rgba(160,20,20,0.2));
+      border: 1px solid rgba(200,40,40,0.5);
+      border-radius: 8px;
+      color: #e07070;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-confirm-red:hover { background: rgba(200,40,40,0.4); border-color: #e07070; }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-cancel:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    /* Phase indicator */
+    .phase-dots {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .phase-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.3s;
+    }
+
+    .phase-dot.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 8px rgba(201,162,39,0.6);
+    }
+
+    .phase-dot.done {
+      background: rgba(201,162,39,0.4);
+      border-color: rgba(201,162,39,0.4);
+    }
+
+    /* Waiting state */
+    .waiting-spinner {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+
+    .spinner-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      opacity: 0.3;
+      animation: spinnerPulse 1.2s ease-in-out infinite;
+    }
+
+    .spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+    .spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes spinnerPulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* Chip decoration */
+    .chip-icon {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: conic-gradient(#c9a227 0deg, #0d4a1e 90deg, #c9a227 90deg, #0d4a1e 180deg, #c9a227 180deg, #0d4a1e 270deg, #c9a227 270deg, #0d4a1e 360deg);
+      border: 2px solid var(--gold);
+      vertical-align: middle;
+      margin-right: 4px;
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-white select-none overflow-hidden font-sans">
+<body>
 
-  <!-- ==========================================
-       SCREENS
-  ========================================== -->
-  
-  <!-- 1. 메인 화면 -->
-  <div id="main-screen" class="min-h-screen flex flex-col items-center justify-center p-4 transition-opacity">
-    <div class="text-center mb-12">
-      <h1 class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 drop-shadow-lg mb-4">
-        세븐 포커 온라인
-      </h1>
-      <p class="text-gray-400 text-lg">최고의 전략과 운을 시험해보세요!</p>
+  <!-- ====== MAIN SCREEN ====== -->
+  <div id="main-screen" class="screen">
+    <div class="main-bg-pattern"></div>
+
+    <div class="suit-decoration" style="top:-5%;left:-5%;animation-delay:0s;color:#c9a227">♠</div>
+    <div class="suit-decoration" style="top:-5%;right:-5%;animation-delay:2s;color:#8a0000">♥</div>
+    <div class="suit-decoration" style="bottom:-10%;left:5%;animation-delay:4s;color:#8a0000">♦</div>
+    <div class="suit-decoration" style="bottom:-10%;right:5%;animation-delay:6s;color:#c9a227">♣</div>
+
+    <div class="logo-container">
+      <div class="logo-badge">ONLINE CASINO</div>
+      <h1 class="logo-title">세븐 포커</h1>
+      <p class="logo-subtitle">SEVEN CARD POKER</p>
+      <div class="card-suits-row" style="justify-content:center">
+        <span style="color:#c9a227">♠</span>
+        <span style="color:#8a0000">♥</span>
+        <span style="color:#8a0000">♦</span>
+        <span style="color:#c9a227">♣</span>
+      </div>
     </div>
-    <div class="flex flex-col gap-4 w-full max-w-sm">
-      <button onclick="showScreen('lobby-screen')" class="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
-        게임 시작하기
-      </button>
-      <button onclick="openModal('how-to-play-modal')" class="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xl shadow-lg transition-transform transform hover:scale-105">
-        게임 방법
-      </button>
+
+    <div class="main-buttons">
+      <button class="btn-primary" onclick="showScreen('lobby-screen')">게임 시작하기</button>
+      <button class="btn-secondary" onclick="openModal('how-to-play-modal')">게임 방법 알아보기</button>
     </div>
   </div>
 
-  <!-- 2. 로비 화면 -->
-  <div id="lobby-screen" class="min-h-screen hidden flex flex-col items-center p-4 relative">
-    <button onclick="showScreen('main-screen')" class="absolute top-4 left-4 text-white hover:text-green-400 p-2">
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+  <!-- ====== LOBBY SCREEN ====== -->
+  <div id="lobby-screen" class="screen hidden">
+    <button class="back-btn" onclick="showScreen('main-screen')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
     </button>
-    <h2 class="text-4xl font-bold text-white mt-12 mb-8">게임 로비</h2>
-    <div class="bg-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-6">
-      <button id="btn-create-room" class="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl transition-all">
-        방 생성하기 (방장)
+
+    <div class="lobby-card">
+      <div class="lobby-title">GAME LOBBY</div>
+
+      <button id="btn-create-room" class="btn-create">
+        ♠ &nbsp; 방 생성하기 (방장)
       </button>
-      <div class="flex items-center">
-        <div class="flex-1 border-t border-slate-600"></div>
-        <span class="px-4 text-slate-400">또는</span>
-        <div class="flex-1 border-t border-slate-600"></div>
-      </div>
-      <div class="flex flex-col gap-3">
-        <input type="text" id="join-code-input" placeholder="참여 코드 6자리 입력" maxlength="6" class="w-full p-4 bg-slate-700 text-white rounded-xl text-center text-xl focus:outline-none focus:ring-2 focus:ring-green-400" />
-        <button id="btn-join-room" class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl transition-all">
-          참여하기
-        </button>
-      </div>
+
+      <div class="lobby-divider">OR</div>
+
+      <input type="text" id="join-code-input" class="lobby-input" placeholder="참여 코드 6자리" maxlength="6" />
+      <button id="btn-join-room" class="btn-join">
+        참여하기
+      </button>
     </div>
   </div>
 
-  <!-- 3. 게임 화면 -->
-  <div id="game-screen" class="hidden h-screen bg-green-900 flex text-white relative font-sans overflow-hidden w-full">
-    <!-- 왼쪽 탑 버튼 -->
-    <div class="absolute top-4 left-4 z-10 flex gap-4">
-      <button onclick="leaveRoom()" class="p-2 bg-slate-800 bg-opacity-50 rounded-full hover:bg-opacity-80 transition">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <div id="room-code-display" class="bg-black bg-opacity-50 px-4 py-2 rounded-lg font-mono tracking-widest border border-green-700">방 코드: ----</div>
-    </div>
-    <!-- 오른쪽 탑 버튼 -->
-    <div class="absolute top-4 right-4 z-10 flex gap-3">
-      <button onclick="openModal('rankings-modal')" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold shadow-md">족보 보기</button>
-      <button id="btn-surrender" onclick="openModal('surrender-modal')" class="hidden px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold shadow-md">항복</button>
+  <!-- ====== GAME SCREEN ====== -->
+  <div id="game-screen" class="screen hidden" style="display:flex">
+    <div class="game-board felt-bg">
+      <div class="table-oval"></div>
+
+      <!-- Top bar -->
+      <div class="game-topbar">
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="back-btn" onclick="leaveRoom()" style="position:static;width:38px;height:38px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="room-code-badge">
+            <span>ROOM</span>
+            <span id="room-code-display" style="color:#fff;letter-spacing:4px">----</span>
+          </div>
+        </div>
+        <div class="top-action-btns">
+          <button class="btn-rankings" onclick="openModal('rankings-modal')">족보</button>
+          <button id="btn-surrender" class="btn-surrender-top hidden" onclick="openModal('surrender-modal')">항복</button>
+        </div>
+      </div>
+
+      <!-- Opponent area -->
+      <div id="opp-area" class="player-area"></div>
+
+      <!-- Center area -->
+      <div id="center-area" class="center-area"></div>
+
+      <!-- My area -->
+      <div id="my-area" class="player-area"></div>
     </div>
 
-    <!-- 메인 게임 보드 -->
-    <div class="flex-1 flex flex-col items-center justify-between py-12 relative border-r border-green-800">
-      <div class="absolute inset-4 border-2 border-green-800 rounded-full opacity-20 pointer-events-none"></div>
-      
-      <!-- 상대방 영역 -->
-      <div id="opp-area" class="flex flex-col items-center z-10"></div>
-      
-      <!-- 중앙 베팅 영역 -->
-      <div id="center-area" class="flex flex-col items-center justify-center w-full max-w-lg z-10"></div>
-      
-      <!-- 내 영역 -->
-      <div id="my-area" class="flex flex-col items-center z-10"></div>
-    </div>
-
-    <!-- 오른쪽 채팅 패널 -->
-    <div class="w-80 bg-slate-900 border-l border-slate-700 flex flex-col z-20">
-      <div class="p-4 bg-slate-800 border-b border-slate-700 font-bold text-center">실시간 채팅</div>
-      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 scrollbar-thin"></div>
-      <form id="chat-form" class="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
-        <input id="chat-input" type="text" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500" placeholder="메시지 입력..." />
-        <button type="submit" class="bg-green-600 px-3 rounded-lg hover:bg-green-500 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+    <!-- Chat panel -->
+    <div class="chat-panel">
+      <div class="chat-header">LIVE CHAT</div>
+      <div id="chat-messages" class="chat-messages"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" type="text" class="chat-input" placeholder="메시지 입력..." />
+        <button type="submit" class="chat-send-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
         </button>
       </form>
     </div>
   </div>
 
 
-  <!-- ==========================================
-       MODALS
-  ========================================== -->
-  
-  <!-- 게임 방법 모달 -->
-  <div id="how-to-play-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-800 text-white p-6 rounded-2xl max-w-lg w-full">
-      <h2 class="text-2xl font-bold mb-4 text-green-400">게임 방법</h2>
-      <ul class="list-disc pl-5 space-y-2 text-gray-300">
-        <li>1인당 시작 금액은 <strong>100,000,000원(1억원)</strong> 입니다.</li>
-        <li>게임 시작 시 기본 참가비 <strong>50,000원</strong>이 자동으로 차감됩니다.</li>
-        <li>처음에는 카드 4장(2장 비공개, 2장 공개)을 받고 시작합니다.</li>
-        <li>이후 카드를 1장씩 받을 때마다 1번씩, <strong>총 4번의 베팅 라운드</strong>가 진행됩니다.</li>
-        <li>베팅은 최소 <strong>10만원</strong>부터 <strong>5만원 단위</strong>로 가능합니다.</li>
-        <li>마지막 7번째 카드는 비공개로 지급되며 모든 라운드 종료 시 패를 공개(쇼다운)하여 승자를 가립니다.</li>
-        <li>게임 도중 '항복' 버튼을 누르면 상대방이 즉시 승리합니다.</li>
-      </ul>
-      <button onclick="closeModal('how-to-play-modal')" class="mt-6 w-full py-3 bg-red-500 hover:bg-red-600 rounded-xl font-bold">닫기</button>
-    </div>
-  </div>
+  <!-- ====== MODALS ====== -->
 
-  <!-- 족보 모달 -->
-  <div id="rankings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-slate-600">
-      <h2 class="text-xl font-bold mb-4 text-yellow-500 text-center border-b border-slate-600 pb-2">세븐 포커 족보</h2>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between"><span class="text-red-400">로얄 스트레이트 플러쉬</span><span>가장 강함</span></div>
-        <div class="flex justify-between"><span>스트레이트 플러쉬</span><span></span></div>
-        <div class="flex justify-between"><span>포카드</span><span>같은 숫자 4장</span></div>
-        <div class="flex justify-between"><span>풀하우스</span><span>트리플 + 원페어</span></div>
-        <div class="flex justify-between"><span>플러쉬</span><span>같은 무늬 5장</span></div>
-        <div class="flex justify-between"><span>스트레이트</span><span>연속된 숫자 5장</span></div>
-        <div class="flex justify-between"><span>트리플</span><span>같은 숫자 3장</span></div>
-        <div class="flex justify-between"><span>투페어</span><span>같은 숫자 2장씩 2쌍</span></div>
-        <div class="flex justify-between"><span>원페어</span><span>같은 숫자 2장</span></div>
-        <div class="flex justify-between text-gray-400 border-t border-slate-700 pt-2"><span>탑 (High Card)</span><span>가장 약함</span></div>
+  <!-- How to play -->
+  <div id="how-to-play-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2 class="modal-title gold">게임 방법</h2>
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">1</div><div>1인당 시작 금액은 <strong style="color:var(--gold)">100,000,000원 (1억원)</strong> 입니다.</div></div>
+        <div class="rule-item"><div class="rule-num">2</div><div>게임 시작 시 기본 참가비 <strong style="color:var(--gold)">50,000원</strong>이 자동으로 차감됩니다.</div></div>
+        <div class="rule-item"><div class="rule-num">3</div><div>처음에는 카드 4장 (2장 비공개, 2장 공개)을 받고 시작합니다.</div></div>
+        <div class="rule-item"><div class="rule-num">4</div><div>이후 카드를 1장씩 받을 때마다 총 <strong style="color:var(--gold)">4번의 베팅 라운드</strong>가 진행됩니다.</div></div>
+        <div class="rule-item"><div class="rule-num">5</div><div>베팅은 최소 <strong style="color:var(--gold)">10만원</strong>부터 <strong style="color:var(--gold)">5만원 단위</strong>로 가능합니다.</div></div>
+        <div class="rule-item"><div class="rule-num">6</div><div>마지막 7번째 카드는 비공개로 지급되며, 쇼다운으로 승자를 가립니다.</div></div>
+        <div class="rule-item"><div class="rule-num">7</div><div>게임 도중 <strong style="color:#e07070">항복</strong> 버튼을 누르면 상대방이 즉시 승리합니다.</div></div>
       </div>
-      <button onclick="closeModal('rankings-modal')" class="mt-6 w-full py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">닫기</button>
+      <button class="btn-close-modal" onclick="closeModal('how-to-play-modal')">닫기</button>
     </div>
   </div>
 
-  <!-- 항복 확인 모달 -->
-  <div id="surrender-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl max-w-sm w-full border border-red-900 text-center">
-      <h2 class="text-2xl font-bold mb-2 text-red-500">항복 확인</h2>
-      <p class="text-gray-300 mb-6">항복에 동의하십니까?<br/>확인 시 즉시 패배 처리되며 팟에 쌓인 돈은 상대방이 가져갑니다.</p>
-      <div class="flex gap-4">
-        <button id="btn-confirm-surrender" class="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-lg font-bold">확인</button>
-        <button onclick="closeModal('surrender-modal')" class="flex-1 py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">취소</button>
+  <!-- Rankings -->
+  <div id="rankings-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2 class="modal-title gold">패의 족보</h2>
+      <div class="ranking-list">
+        <div class="ranking-item top"><span class="rank-name">🏆 로얄 스트레이트 플러쉬</span><span class="rank-desc">최강</span></div>
+        <div class="ranking-item"><span class="rank-name">스트레이트 플러쉬</span><span class="rank-desc">같은 무늬 연속 5장</span></div>
+        <div class="ranking-item"><span class="rank-name">포카드</span><span class="rank-desc">같은 숫자 4장</span></div>
+        <div class="ranking-item"><span class="rank-name">풀하우스</span><span class="rank-desc">트리플 + 원페어</span></div>
+        <div class="ranking-item"><span class="rank-name">플러쉬</span><span class="rank-desc">같은 무늬 5장</span></div>
+        <div class="ranking-item"><span class="rank-name">스트레이트</span><span class="rank-desc">연속된 숫자 5장</span></div>
+        <div class="ranking-item"><span class="rank-name">트리플</span><span class="rank-desc">같은 숫자 3장</span></div>
+        <div class="ranking-item"><span class="rank-name">투페어</span><span class="rank-desc">같은 숫자 2장 × 2쌍</span></div>
+        <div class="ranking-item"><span class="rank-name">원페어</span><span class="rank-desc">같은 숫자 2장</span></div>
+        <div class="ranking-item" style="opacity:0.5"><span class="rank-name">탑 (High Card)</span><span class="rank-desc">최약</span></div>
+      </div>
+      <button class="btn-close-modal" onclick="closeModal('rankings-modal')">닫기</button>
+    </div>
+  </div>
+
+  <!-- Surrender -->
+  <div id="surrender-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="text-align:center">
+      <h2 class="modal-title red" style="text-align:center">항복 확인</h2>
+      <p class="surrender-text">
+        항복에 동의하십니까?<br/>
+        확인 시 즉시 패배 처리되며<br/>
+        팟에 쌓인 금액은 상대방에게 귀속됩니다.
+      </p>
+      <div class="modal-actions">
+        <button id="btn-confirm-surrender" class="btn-confirm-red">항복 확인</button>
+        <button class="btn-cancel" onclick="closeModal('surrender-modal')">취소</button>
       </div>
     </div>
   </div>
 
 
-  <!-- ==========================================
-       JAVASCRIPT LOGIC
-  ========================================== -->
+  <!-- ====== JAVASCRIPT ====== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 1. Firebase 초기화
     const userFirebaseConfig = {
       apiKey: "AIzaSyAOEr3obGdMpSG0RQzUhWUGou7tn_idcxo",
       authDomain: "fruitslayer-online.firebaseapp.com",
@@ -183,25 +1281,28 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // 2. 전역 상태 변수
     let currentUser = null;
     let roomCode = '';
     let roomData = null;
     let unsubscribeRoom = null;
 
-    // 3. UI 헬퍼 함수
     window.showScreen = (screenId) => {
       ['main-screen', 'lobby-screen', 'game-screen'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (id === screenId) {
+          el.classList.remove('hidden');
+          if (id === 'game-screen') el.style.display = 'flex';
+        } else {
+          el.classList.add('hidden');
+          if (id === 'game-screen') el.style.display = '';
+        }
       });
-      document.getElementById(screenId).classList.remove('hidden');
       if (screenId === 'lobby-screen') cleanupOldRooms();
     };
 
     window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
     window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
 
-    // 4. Auth 초기화
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -213,11 +1314,8 @@
     };
     initAuth();
 
-    onAuthStateChanged(auth, (user) => {
-      currentUser = user;
-    });
+    onAuthStateChanged(auth, (user) => { currentUser = user; });
 
-    // 5. 룸 클린업 로직
     async function cleanupOldRooms() {
       if (!currentUser) return;
       try {
@@ -233,7 +1331,6 @@
       } catch (e) { console.error("Cleanup error:", e); }
     }
 
-    // 6. 포커 유틸리티
     const SUITS = ['♠', '♥', '♦', '♣'];
     const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
     const RANK_VALUES = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
@@ -260,9 +1357,7 @@
 
       let isFlush = false, flushCards = [];
       for (let suit in suitCounts) {
-        if (suitCounts[suit].length >= 5) {
-          isFlush = true; flushCards = suitCounts[suit]; break;
-        }
+        if (suitCounts[suit].length >= 5) { isFlush = true; flushCards = suitCounts[suit]; break; }
       }
 
       const checkStraight = (cardList) => {
@@ -301,7 +1396,6 @@
       return { score: sortedCards[0].value, name: '탑 (High Card)' };
     };
 
-    // 7. 게임 메인 로직 헬퍼
     const updateGameData = async (updates) => {
       const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
       await updateDoc(roomRef, { lastActive: Date.now(), ...updates });
@@ -320,20 +1414,19 @@
       }
     };
 
-    // 8. 렌더링 함수
     const createCardHTML = (card, hidden) => {
       if (hidden) {
-        return `<div class="w-16 h-24 bg-gradient-to-br from-blue-700 to-blue-900 border-2 border-white rounded-lg shadow-md m-1 flex items-center justify-center">
-          <div class="w-12 h-20 border border-blue-400 rounded-sm bg-blue-800 opacity-50 flex items-center justify-center">
-            <span class="text-white opacity-20 font-bold text-2xl">?</span>
-          </div>
+        return `<div class="playing-card hidden-card">
+          <div class="hidden-pattern"></div>
+          <span class="hidden-q">?</span>
         </div>`;
       }
       const isRed = card.suit === '♥' || card.suit === '♦';
-      const colorClass = isRed ? 'text-red-600' : 'text-black';
-      return `<div class="w-16 h-24 bg-white border border-gray-300 rounded-lg shadow-md m-1 p-2 flex flex-col justify-between ${colorClass}">
-        <div class="text-sm font-bold leading-none">${card.rank}</div>
-        <div class="text-2xl text-center flex-1 flex items-center justify-center">${card.suit}</div>
+      const colorClass = isRed ? 'red' : 'black';
+      return `<div class="playing-card ${colorClass}">
+        <div class="card-corner">${card.rank}<br/>${card.suit}</div>
+        <div class="card-suit-center">${card.suit}</div>
+        <div class="card-corner bottom">${card.rank}<br/>${card.suit}</div>
       </div>`;
     };
 
@@ -352,112 +1445,141 @@
       const oppBet = isHost ? game.guestBetAmount : game.hostBetAmount;
       const isMyTurn = game.turn === currentUser.uid;
 
-      document.getElementById('room-code-display').innerText = `방 코드: ${roomCode}`;
+      document.getElementById('room-code-display').innerText = roomCode;
 
       const btnSurrender = document.getElementById('btn-surrender');
       if (game.phase > 0 && game.phase < 5) btnSurrender.classList.remove('hidden');
       else btnSurrender.classList.add('hidden');
 
-      // 상대방 렌더링
-      let oppCardsHTML = game.phase === 0 ? `<div class="text-green-700 opacity-50 flex items-center h-full">대기중...</div>`
-        : oppCards.map(c => createCardHTML(c, c.isSecret && game.phase !== 5)).join('');
-      
+      // Phase dots HTML
+      const phaseDots = [1,2,3,4].map(i => {
+        let cls = 'phase-dot';
+        if (game.phase > i) cls += ' done';
+        else if (game.phase === i) cls += ' active';
+        return `<div class="${cls}"></div>`;
+      }).join('');
+
+      // ---- Opponent area ----
+      let oppCardsHTML = '';
+      if (game.phase === 0) {
+        oppCardsHTML = `<div style="height:90px;display:flex;align-items:center;color:rgba(255,255,255,0.15);font-size:12px;letter-spacing:3px">대기중</div>`;
+      } else {
+        oppCardsHTML = oppCards.map(c => createCardHTML(c, c.isSecret && game.phase !== 5)).join('');
+      }
+
       document.getElementById('opp-area').innerHTML = `
-        <div class="bg-black bg-opacity-40 px-6 py-2 rounded-xl mb-4 text-center">
-          <h3 class="text-lg font-bold text-gray-300">${isHost ? '참여자' : '방장'} (상대방)</h3>
-          <p class="text-yellow-400 font-mono text-xl">${oppMoney.toLocaleString()} 원</p>
-          ${game.phase > 0 ? `<p class="text-sm text-gray-400">이번 턴 베팅: ${oppBet.toLocaleString()} 원</p>` : ''}
+        <div class="player-info-box ${!isMyTurn && game.phase > 0 && game.phase < 5 ? 'is-turn' : ''}">
+          <div class="player-label">${isHost ? 'GUEST' : 'HOST'} · 상대방</div>
+          <div class="player-name">${!isMyTurn && game.phase > 0 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '참여자' : '방장'}</div>
+          <div class="player-money">${oppMoney.toLocaleString()}<span style="font-size:12px;color:var(--text-muted);margin-left:4px">원</span></div>
+          ${game.phase > 0 ? `<div class="player-bet-badge">이번 베팅 ${oppBet.toLocaleString()}원</div>` : ''}
         </div>
-        <div class="flex justify-center h-28">${oppCardsHTML}</div>
+        <div class="cards-row" style="margin-top:12px">${oppCardsHTML}</div>
       `;
 
-      // 내 영역 렌더링
-      let myCardsHTML = game.phase === 0 ? `<div class="text-green-700 opacity-50 flex items-center h-full">대기중...</div>`
-        : myCards.map(c => createCardHTML(c, false)).join('');
+      // ---- My area ----
+      let myCardsHTML = '';
+      if (game.phase === 0) {
+        myCardsHTML = `<div style="height:90px;display:flex;align-items:center;color:rgba(255,255,255,0.15);font-size:12px;letter-spacing:3px">대기중</div>`;
+      } else {
+        myCardsHTML = myCards.map(c => createCardHTML(c, false)).join('');
+      }
 
       document.getElementById('my-area').innerHTML = `
-        <div class="flex justify-center h-28 mb-4">${myCardsHTML}</div>
-        <div class="bg-black bg-opacity-80 border-t-4 border-green-500 px-8 py-3 rounded-t-2xl text-center min-w-[250px] shadow-2xl">
-          <h3 class="text-lg font-bold text-white mb-1">${isHost ? '방장' : '참여자'} (나)</h3>
-          <p class="text-yellow-400 font-mono text-2xl font-bold">${myMoney.toLocaleString()} 원</p>
-          ${game.phase > 0 ? `<p class="text-sm text-gray-400 mt-1">이번 턴 베팅: ${myBet.toLocaleString()} 원</p>` : ''}
+        <div class="cards-row" style="margin-bottom:12px">${myCardsHTML}</div>
+        <div class="player-info-box ${isMyTurn && game.phase > 0 && game.phase < 5 ? 'is-turn' : ''}">
+          <div class="player-label">${isHost ? 'HOST' : 'GUEST'} · 나</div>
+          <div class="player-name">${isMyTurn && game.phase > 0 && game.phase < 5 ? '<span class="turn-indicator"></span>' : ''}${isHost ? '방장' : '참여자'}</div>
+          <div class="player-money">${myMoney.toLocaleString()}<span style="font-size:12px;color:var(--text-muted);margin-left:4px">원</span></div>
+          ${game.phase > 0 ? `<div class="player-bet-badge">이번 베팅 ${myBet.toLocaleString()}원</div>` : ''}
         </div>
       `;
 
-      // 중앙 영역 렌더링 (입력값 보존을 위한 트릭 사용)
+      // ---- Center area ----
       let currentBetInput = document.getElementById('bet-input-val')?.value || '100000';
-      
       let centerHTML = '';
+
       if (game.phase === 0) {
         centerHTML = `
-          <div class="flex flex-col items-center bg-black bg-opacity-60 p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
-            <h2 class="text-2xl mb-6 text-green-400">${roomData.guestId ? '모두 준비되었습니다' : '참여자를 기다리는 중...'}</h2>
-            ${isHost ? `
-              <div class="flex gap-4">
-                <button id="btn-start-game" class="px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-extrabold rounded-xl text-xl shadow-lg transition">게임 시작하기</button>
-                <button id="btn-disband-room" class="px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xl shadow-lg transition">방 해산하기</button>
+          <div class="start-panel">
+            <h2>${roomData.guestId ? '준비 완료' : '참여자를 기다리는 중'}</h2>
+            ${!roomData.guestId ? `
+              <div class="waiting-spinner">
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <span style="margin-left:8px">입장 대기중</span>
               </div>
-            ` : `<p class="text-gray-300">방장이 게임을 시작하기를 기다려주세요.</p>`}
+            ` : ''}
+            ${isHost ? `
+              <div class="start-panel-btns" style="margin-top:${roomData.guestId ? '0' : '16px'}">
+                <button id="btn-start-game" class="btn-start-game-main">게임 시작하기</button>
+                <button id="btn-disband-room" class="btn-disband">해산</button>
+              </div>
+            ` : (roomData.guestId ? `<p style="color:var(--text-muted);font-size:13px;letter-spacing:2px">방장이 게임을 시작하기를 기다리는 중...</p>` : '')}
           </div>
         `;
       } else {
         centerHTML = `
-          <div class="w-full flex flex-col items-center">
-            <div class="bg-black bg-opacity-70 px-8 py-6 rounded-3xl text-center border-2 border-yellow-600 shadow-2xl mb-6 transform scale-110">
-              <p class="text-sm text-yellow-500 mb-1 font-bold tracking-widest">TOTAL POT</p>
-              <p class="text-4xl font-mono text-yellow-400">${game.pot.toLocaleString()} <span class="text-xl">원</span></p>
-            </div>
-            <div class="bg-slate-800 bg-opacity-80 px-6 py-3 rounded-full text-center mb-6 max-w-sm w-full truncate border border-slate-600">
-              ${game.message}
-            </div>
-            ${game.phase === 5 && isHost ? `
-              <button id="btn-start-game" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xl shadow-lg mt-4 animate-bounce">
-                다음 게임 시작 (참가비 5만)
-              </button>
-            ` : ''}
-            ${game.phase > 0 && game.phase < 5 && isMyTurn ? `
-              <div class="bg-slate-800 p-4 rounded-xl flex flex-col gap-3 shadow-2xl border border-slate-600 w-full max-w-md">
-                <div class="flex justify-between text-sm text-gray-300 px-2">
-                  <span>콜 비용: ${(game.currentBet - myBet).toLocaleString()}원</span>
-                  <span>내 턴입니다!</span>
-                </div>
-                <div class="flex gap-2">
-                  <input id="bet-input-val" type="number" min="100000" step="50000" value="${currentBetInput}" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-right font-mono text-white" />
-                  <button id="btn-raise" class="px-4 bg-red-600 hover:bg-red-500 rounded-lg font-bold">레이즈</button>
-                </div>
-                <div class="flex gap-2 h-12">
-                  <button id="btn-call" class="flex-1 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold">
-                    ${game.currentBet > myBet ? '콜 (Call)' : '체크 (Check)'}
-                  </button>
-                  <button id="btn-fold" class="flex-1 bg-gray-600 hover:bg-gray-500 rounded-lg font-bold">다이 (Fold)</button>
-                </div>
-              </div>
-            ` : ''}
+          <div class="phase-dots">${phaseDots}</div>
+          <div class="pot-display">
+            <div class="pot-label">TOTAL POT</div>
+            <div class="pot-amount"><span class="chip-icon"></span>${game.pot.toLocaleString()} 원</div>
           </div>
+          <div class="game-message">${game.message}</div>
+          ${game.phase === 5 && isHost ? `
+            <button id="btn-start-game" class="next-game-btn">다음 게임 시작 (참가비 5만)</button>
+          ` : ''}
+          ${game.phase > 0 && game.phase < 5 && isMyTurn ? `
+            <div class="betting-panel">
+              <div class="betting-top-info">
+                <span>콜 비용: <strong style="color:#90b0ff">${(game.currentBet - myBet).toLocaleString()}원</strong></span>
+                <span class="your-turn-badge">YOUR TURN</span>
+              </div>
+              <div class="raise-row">
+                <input id="bet-input-val" type="number" min="100000" step="50000" value="${currentBetInput}" class="bet-input" />
+                <button id="btn-raise" class="btn-raise">레이즈</button>
+              </div>
+              <div class="action-btns">
+                <button id="btn-call" class="btn-call">
+                  ${game.currentBet > myBet ? '콜 (Call)' : '체크 (Check)'}
+                </button>
+                <button id="btn-fold" class="btn-fold">다이 (Fold)</button>
+              </div>
+            </div>
+          ` : game.phase > 0 && game.phase < 5 && !isMyTurn ? `
+            <div class="waiting-notice">
+              <div class="waiting-spinner" style="justify-content:center">
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <span style="margin-left:8px">상대방 차례</span>
+              </div>
+            </div>
+          ` : ''}
         `;
       }
       document.getElementById('center-area').innerHTML = centerHTML;
 
-      // 채팅 렌더링
+      // ---- Chat ----
       const chatBox = document.getElementById('chat-messages');
       chatBox.innerHTML = roomData.chat.map(c => {
         const isMe = c.sender === (isHost ? '방장' : '참여자');
         return `
-          <div class="flex flex-col max-w-[90%] ${isMe ? 'self-end items-end' : 'self-start items-start'}">
-            <span class="text-xs text-gray-500 mb-1">${c.sender}</span>
-            <div class="px-3 py-2 rounded-xl ${isMe ? 'bg-blue-600' : 'bg-slate-700'}">${c.msg}</div>
+          <div class="chat-msg ${isMe ? 'me' : 'other'}">
+            <span class="chat-sender">${c.sender}</span>
+            <div class="chat-bubble">${c.msg}</div>
           </div>
         `;
       }).join('');
       chatBox.scrollTop = chatBox.scrollHeight;
     };
 
-    // 9. 리스너 초기화 (Lobby Screen Events)
+    // Lobby events
     document.getElementById('btn-create-room').addEventListener('click', async () => {
       if (!currentUser) return;
       roomCode = Math.floor(100000 + Math.random() * 900000).toString();
       const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', roomCode);
-      
       await setDoc(roomRef, {
         roomId: roomCode, hostId: currentUser.uid, guestId: null, status: 'waiting', lastActive: Date.now(), chat: [],
         game: {
@@ -471,8 +1593,7 @@
     document.getElementById('btn-join-room').addEventListener('click', async () => {
       if (!currentUser) return;
       const code = document.getElementById('join-code-input').value;
-      if(!code) return;
-      
+      if (!code) return;
       const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'pokerRooms', code);
       const docSnap = await getDoc(roomRef);
       if (docSnap.exists()) {
@@ -498,16 +1619,15 @@
           }
         } else {
           alert('존재하지 않거나 삭제된 방입니다.');
-          roomCode = ''; if(unsubscribeRoom) unsubscribeRoom(); window.showScreen('lobby-screen');
+          roomCode = ''; if (unsubscribeRoom) unsubscribeRoom(); window.showScreen('lobby-screen');
         }
       }, (err) => console.error(err));
     };
 
-    // 10. 이벤트 위임 (동적 생성되는 게임 버튼들)
+    // Game action delegation
     document.addEventListener('click', async (e) => {
       if (!currentUser || !roomData) return;
       const target = e.target;
-
       const isHost = currentUser.uid === roomData.hostId;
       const opponentId = isHost ? roomData.guestId : roomData.hostId;
       const game = roomData.game;
@@ -519,8 +1639,8 @@
         const hMoney = game.hostMoney - ante;
         const gMoney = game.guestMoney - ante;
         const pot = ante * 2;
-        const hostHand = [ {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false} ];
-        const guestHand = [ {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: true}, {...deck.pop(), isSecret: false}, {...deck.pop(), isSecret: false} ];
+        const hostHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:false}, {...deck.pop(), isSecret:false} ];
+        const guestHand = [ {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:true}, {...deck.pop(), isSecret:false}, {...deck.pop(), isSecret:false} ];
         await updateGameData({
           status: 'playing', 'game.hostMoney': hMoney, 'game.guestMoney': gMoney, 'game.pot': pot, 'game.deck': deck,
           'game.hostCards': hostHand, 'game.guestCards': guestHand, 'game.phase': 1, 'game.turn': roomData.hostId,
@@ -569,8 +1689,8 @@
           } else if (newPhase === 4) {
             newPhase = 5;
             if (newHostCards.length === 6) {
-               newHostCards.push({...newDeck.pop(), isSecret: true});
-               newGuestCards.push({...newDeck.pop(), isSecret: true});
+              newHostCards.push({...newDeck.pop(), isSecret: true});
+              newGuestCards.push({...newDeck.pop(), isSecret: true});
             }
             const hHand = evaluateHand(newHostCards); const gHand = evaluateHand(newGuestCards);
             if (hHand.score > gHand.score) { winner = roomData.hostId; newHostMoney += newPot; msg = `방장 승리! (${hHand.name})`; }
@@ -597,18 +1717,16 @@
       }
     });
 
-    // 11. 채팅 전송
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
       const msg = input.value.trim();
       if (!msg || !roomData) return;
       const isHost = currentUser.uid === roomData.hostId;
-      const newChat = [...roomData.chat, { sender: isHost ? '방장' : '참여자', msg: msg, time: Date.now() }];
+      const newChat = [...roomData.chat, { sender: isHost ? '방장' : '참여자', msg, time: Date.now() }];
       await updateGameData({ chat: newChat });
       input.value = '';
     });
-
   </script>
 </body>
 </html>
